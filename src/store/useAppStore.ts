@@ -4,6 +4,7 @@ import type {
   AgentConfig,
   ApiKeys,
   ChatMessage,
+  ChatMode,
   LocalProgress,
   ModelVendor,
   PendingChange,
@@ -39,8 +40,9 @@ export interface AppState {
   setModel: (vendor: RemoteVendor, model: string) => void;
   localModel: string;
   setLocalModel: (m: string) => void;
-  agentEnabled: boolean;
-  setAgentEnabled: (v: boolean) => void;
+  /** Modo padrão do chat (conversa primeiro). O chat real decide por mensagem. */
+  chatMode: ChatMode;
+  setChatMode: (v: ChatMode) => void;
   agentConfig: AgentConfig;
   setAgentConfig: (v: AgentConfig) => void;
   syncApiKeys: boolean;
@@ -141,8 +143,8 @@ export const useAppStore = create<AppState>()(
         set((s) => ({ models: { ...s.models, [vendor]: model } })),
       localModel: "Hermes-3-Llama-3.1-8B-q4f16_1-MLC",
       setLocalModel: (m) => set({ localModel: m }),
-      agentEnabled: true,
-      setAgentEnabled: (v) => set({ agentEnabled: v }),
+      chatMode: "chat",
+      setChatMode: (v) => set({ chatMode: v }),
       agentConfig: DEFAULT_AGENT_CONFIG,
       setAgentConfig: (v) => set({ agentConfig: v }),
       syncApiKeys: false,
@@ -202,6 +204,9 @@ export const useAppStore = create<AppState>()(
         };
         // Modelos sem function calling (ex.: Qwen) quebram o Modo Agente → migra para o default com tools.
         if (!localModelSupportsTools(merged.localModel)) merged.localModel = current.localModel;
+        // ChatMode: usuários antigos tinham "agentEnabled: true" por default — conversa-primeiro,
+        // então só respeitamos o novo campo; legacy vira "chat".
+        merged.chatMode = p.chatMode === "agent" || p.chatMode === "chat" ? p.chatMode : "chat";
         // Config de agente com defaults sanos (protege contra NaN/abuso no profile persistido).
         const pcfg = p.agentConfig as Partial<AgentConfig> | undefined;
         if (pcfg) {
@@ -218,7 +223,7 @@ export const useAppStore = create<AppState>()(
         apiKeys: s.apiKeys,
         models: s.models,
         localModel: s.localModel,
-        agentEnabled: s.agentEnabled,
+        chatMode: s.chatMode,
         agentConfig: s.agentConfig,
         syncApiKeys: s.syncApiKeys,
         activeRepo: s.activeRepo,

@@ -1,12 +1,12 @@
 import { useEffect, useRef, useState } from "react";
-import { Bot, Cpu, SendHorizonal, KeyRound, Loader2 } from "lucide-react";
+import { Bot, Cpu, SendHorizonal, KeyRound, Loader2, MessageSquare, Wrench } from "lucide-react";
 import { useAppStore, uid } from "../store/useAppStore";
 import { simpleChat, providerAvailable } from "../lib/llm";
 import { Orchestrator } from "../agents/orchestrator";
 import { buildProvider } from "../lib/llm";
 import { loadChat, saveChatDebounced } from "../lib/chatDb";
 import { localModelSupportsTools } from "../lib/llm/providers/local";
-import type { RemoteVendor } from "../types";
+import type { ChatMessage, ChatMode, RemoteVendor } from "../types";
 
 const KEY_URLS: Record<RemoteVendor, string> = {
   openai: "https://platform.openai.com/api-keys",
@@ -27,10 +27,11 @@ const KEY_HINTS: Record<RemoteVendor, string> = {
 export function ChatPanel({ repo }: { repo: string | null }) {
   const {
     chat, appendChat, replaceChat, agentRunning, setAgentRunning, vendor, setVendor,
-    activeRepo, setToast, localProgress, agentEnabled, setAgentEnabled, apiKeys, setApiKey, localModel,
+    activeRepo, setToast, localProgress, apiKeys, setApiKey, localModel,
   } = useAppStore();
   const [input, setInput] = useState("");
   const [keyDraft, setKeyDraft] = useState("");
+  const [msgMode, setMsgMode] = useState<ChatMode>(() => useAppStore.getState().chatMode);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -55,7 +56,7 @@ export function ChatPanel({ repo }: { repo: string | null }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [chat, repo]);
 
-  const canAgent = !!activeRepo && agentEnabled;
+  const canAgent = !!activeRepo && msgMode === "agent";
   const available = providerAvailable();
   const remoteVendor = vendor !== "local" ? (vendor as RemoteVendor) : null;
   const hasKey = remoteVendor ? (apiKeys[remoteVendor] ?? "").trim().length > 0 : true;
@@ -82,9 +83,15 @@ export function ChatPanel({ repo }: { repo: string | null }) {
         appendChat({ id: uid(), role: "assistant", content: finalText });
         if (appliedChanges > 0) setToast(`${appliedChanges} alteração(ões) aprovada(s) e commitada(s).`);
       } else {
-        const history = [...chat, { id: uid(), role: "user" as const, content: text }];
-        const { assistant, provider } = await simpleChat(history);
-        void provider;
+        const sysCtx = repo
+          ? `Repositório virtual aberto: ${repo}. Você está em MODO CONVERSA (sem tools): responda com base no histórico e contexto; NÃO invente conteúdo de arquivos ou do projeto. Para editar código, o usuário muda para o modo Agente.`
+          : "Você é o assistente do AICOLLIDER (editor + IA no navegador). Responda em português, de forma objetiva.";
+        const history: ChatMessage[] = [
+          { id: uid(), role: "system", content: sysCtx },
+          ...chat,
+          { id: uid(), role: "user", content: text },
+        ];
+        const { assistant } = await simpleChat(history);
         appendChat({ id: uid(), role: "assistant", content: assistant });
       }
     } catch (e) {
@@ -102,7 +109,7 @@ export function ChatPanel({ repo }: { repo: string | null }) {
     <aside className="flex h-full w-full flex-col border-l border-surface-600 bg-surface-900/70 md:w-96 md:shrink-0">
       <div className="flex items-center justify-between gap-2 border-b border-surface-600 px-3 py-2">
         <span className="flex items-center gap-2 text-xs font-semibold text-slate-200">
-          <Bot className="h-4 w-4 text-emerald-400" /> Chat de Vibe Coding
+          <Bot className="h-4 w-4 text-emerald-400" /> Chat & Agente
         </span>
         <select
           value={vendor}
@@ -132,18 +139,13 @@ export function ChatPanel({ repo }: { repo: string | null }) {
       )}
 
       <div className="flex items-center gap-2 border-b border-surface-600 px-3 py-1.5">
-        <label className="flex items-center gap-2 text-xs text-slate-400">
-          <input
-            type="checkbox"
-            checked={agentEnabled}
-            onChange={(e) => setAgentEnabled(e.target.checked)}
-            className="h-4 w-4 accent-sky-500"
-          />
-          Modo Agente (tools no FS virtual)
-        </label>
+        <p className="flex items-center gap-1.5 text-xs text-slate-500">
+          <MessageSquare className="h-3.5 w-3.5 shrink-0" />
+          Conversa primeiro: o modo <b className="text-slate-300">Agente</b> é escolhido por mensagem, logo abaixo.
+        </p>
       </div>
 
-      {vendor === "local" && agentEnabled && !localModelSupportsTools(localModel) && (
+      {vendor === "local" && msgMode === "agent" && !localModelSupportsTools(localModel) && (
         <p className="border-b border-surface-600 bg-amber-500/10 px-3 py-1.5 text-xs text-amber-300">
           Este modelo usa <b>tool calling manual</b> — o Modo Agente funciona, porém com menos confiabilidade. <b>Hermes 3</b> usa tools nativos (recomendado).
         </p>
@@ -161,7 +163,10 @@ export function ChatPanel({ repo }: { repo: string | null }) {
                 A IA lê a pasta, propõe o diff e aguarda o seu clique para salvar.
               </>
             ) : (
-              <>Converse normalmente. Ative o "Modo Agente" para a IA manipular o repositório virtual.</>
+              <>
+                Converse normalmente. Quando quiser que a IA manipule o repositório, escolha{" "}
+                <em className="text-slate-400">"Agente"</em> ao lado do campo de mensagem.
+              </>
             )}
           </p>
         )}
@@ -235,6 +240,22 @@ export function ChatPanel({ repo }: { repo: string | null }) {
             WebGPU indisponível neste navegador. Use Chrome/Edge recente ou escolha um provedor remoto no seletor acima.
           </p>
         )}
+        <div className="mb-2 flex items-center gap-1 rounded-xl border border-surface-600 bg-surface-800 p-1">
+          {(["chat", "agent"] as ChatMode[]).map((m) => (
+            <button
+              key={m}
+              onClick={() => setMsgMode(m)}
+              disabled={m === "agent" && !activeRepo}
+              title={m === "agent" && !activeRepo ? "Abra um repositório para usar o agente" : undefined}
+              className={`flex flex-1 min-h-9 items-center justify-center gap-1.5 rounded-lg px-2 py-1.5 text-xs font-semibold touch-manipulation disabled:opacity-40 ${
+                msgMode === m ? "bg-emerald-600 text-white" : "text-slate-400 hover:bg-surface-700 hover:text-slate-200"
+              }`}
+            >
+              {m === "chat" ? <MessageSquare className="h-3.5 w-3.5" /> : <Wrench className="h-3.5 w-3.5" />}
+              {m === "chat" ? "Conversar" : "Agente"}
+            </button>
+          ))}
+        </div>
         <div className="flex items-end gap-2">
           <textarea
             value={input}

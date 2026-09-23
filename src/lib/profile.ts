@@ -1,4 +1,4 @@
-import type { AgentConfig, RemoteVendor } from "../types";
+import type { AgentConfig, ChatMode, RemoteVendor } from "../types";
 
 export const PROFILE_REPO = "aicollider-profile";
 export const PROFILE_FILE = "profile.json";
@@ -10,7 +10,9 @@ export interface ProfileData {
   apiKeys: Partial<Record<string, string>>;
   models: Partial<Record<RemoteVendor, string>>;
   localModel: string;
-  agentEnabled: boolean;
+  /** Legacy: perfis antigos traziam agentEnabled (default true). Hoje usamos chatMode. */
+  agentEnabled?: boolean;
+  chatMode?: ChatMode;
   agentConfig?: AgentConfig;
   syncApiKeys: boolean;
   activeRepo: string | null;

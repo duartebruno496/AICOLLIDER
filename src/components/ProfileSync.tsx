@@ -16,7 +16,7 @@ function collect(): ProfileData {
     apiKeys: s.syncApiKeys ? { ...s.apiKeys } : {},
     models: s.models,
     localModel: s.localModel,
-    agentEnabled: s.agentEnabled,
+    chatMode: s.chatMode,
     syncApiKeys: s.syncApiKeys,
     activeRepo: s.activeRepo,
     repositoryUrl: s.repositoryUrl,
@@ -29,7 +29,9 @@ function mergeProfile(p: ProfileData): void {
   if (p.vendor && VALID_VENDORS.includes(p.vendor)) s.setVendor(p.vendor as never);
   if (p.supabaseConfig?.url) s.setSupabaseConfig(p.supabaseConfig);
   if (p.localModel && localModelSupportsTools(p.localModel)) s.setLocalModel(p.localModel);
-  if (typeof p.agentEnabled === "boolean") s.setAgentEnabled(p.agentEnabled);
+  if (p.chatMode === "chat" || p.chatMode === "agent") s.setChatMode(p.chatMode);
+  // Legacy nunca habilitava agent init por padrão: perfis antigos (agentEnabled default true) viram "chat".
+  else if (p.agentEnabled !== undefined) s.setChatMode("chat");
   if (p.agentConfig && Number.isFinite(p.agentConfig.temperature) && Number.isFinite(p.agentConfig.maxSteps)) {
     s.setAgentConfig({
       temperature: Math.min(2, Math.max(0, p.agentConfig.temperature)),
@@ -62,7 +64,7 @@ function persistedSnapshot(s: ReturnType<typeof useAppStore.getState>): string {
     apiKeys: s.syncApiKeys ? { ...s.apiKeys } : {},
     models: s.models,
     localModel: s.localModel,
-    agentEnabled: s.agentEnabled,
+    chatMode: s.chatMode,
     agentConfig: s.agentConfig,
     syncApiKeys: s.syncApiKeys,
     activeRepo: s.activeRepo,

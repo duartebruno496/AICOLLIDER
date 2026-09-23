@@ -25,6 +25,9 @@ export interface AgentConfig {
   maxSteps: number;
 }
 
+/** Modo de envio da mensagem no chat: conversa normal (sem tools) ou agente (manipula o FS virtual). */
+export type ChatMode = "chat" | "agent";
+
 /** Padrões do Modo Agente: conectou a IA, já funciona sem configurar nada. */
 export const DEFAULT_AGENT_CONFIG: AgentConfig = {
   temperature: 0.3,

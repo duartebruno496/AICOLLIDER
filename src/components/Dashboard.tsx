@@ -25,7 +25,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import { useAppStore } from "../store/useAppStore";
-import type { ApiKeys, RemoteVendor } from "../types";
+import type { ApiKeys, ChatMode, RemoteVendor } from "../types";
 import { DEFAULT_MODELS, DEFAULT_AGENT_CONFIG } from "../types";
 import { Field, Button, inputCls } from "./common";
 import { signOut } from "../lib/auth";
@@ -624,7 +624,7 @@ function ReposTab() {
 }
 
 function AgentTab() {
-  const { agentEnabled, setAgentEnabled, agentConfig, setAgentConfig, setToast } = useAppStore();
+  const { chatMode, setChatMode, agentConfig, setAgentConfig, setToast } = useAppStore();
   const [temperature, setTemperature] = useState(agentConfig.temperature);
   const [maxSteps, setMaxSteps] = useState(agentConfig.maxSteps);
 
@@ -650,13 +650,25 @@ function AgentTab() {
           <Bot className="h-4 w-4 text-sky-400" /> Comportamento do agente
         </h3>
 
-        <label className="mb-4 flex items-center justify-between rounded-xl border border-surface-600 bg-surface-900 p-3 touch-manipulation">
-          <div>
-            <span className="block text-sm font-medium text-slate-200">Modo Agente habilitado</span>
-            <span className="block text-xs text-slate-500">Ao ligar, o chat passa a manipular o repositório virtual via tools.</span>
+        <div className="mb-4">
+          <span className="mb-2 block text-sm font-medium text-slate-200">Modo padrão do chat</span>
+          <div className="flex gap-1 rounded-xl border border-surface-600 bg-surface-900 p-1">
+            {(["chat", "agent"] as ChatMode[]).map((m) => (
+              <button
+                key={m}
+                onClick={() => setChatMode(m)}
+                className={`flex flex-1 min-h-9 items-center justify-center gap-1.5 rounded-lg px-2 py-1.5 text-xs font-semibold touch-manipulation ${
+                  chatMode === m ? "bg-emerald-600 text-white" : "text-slate-400 hover:bg-surface-700 hover:text-slate-200"
+                }`}
+              >
+                {m === "chat" ? "Conversar" : "Agente"}
+              </button>
+            ))}
           </div>
-          <input type="checkbox" checked={agentEnabled} onChange={(e) => setAgentEnabled(e.target.checked)} className="h-5 w-5 accent-sky-500" />
-        </label>
+          <p className="mt-1 text-xs text-slate-500">
+            Conversa é o padrão (sem mexer em arquivos). No chat, o modo é escolhido por mensagem; este é o valor inicial.
+          </p>
+        </div>
 
         <div className="grid gap-3 md:grid-cols-2">
           <Field label="Temperatura (criatividade/aleatoriedade)" hint="0 = determinístico · 1+ = criativo. Recomendado: 0.3">
