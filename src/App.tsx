@@ -10,6 +10,7 @@ import { LoginScreen } from "./components/LoginScreen";
 import { ProjectWizard } from "./components/ProjectWizard";
 import { Workspace } from "./components/Workspace";
 import { SettingsModal } from "./components/SettingsModal";
+import { ProfileSync } from "./components/ProfileSync";
 
 /** Limpa service workers antigos (causa comum de tela em branco no dev). */
 async function purgeStaleServiceWorkers() {
@@ -56,6 +57,7 @@ export default function App() {
 
   return (
     <>
+      <ProfileSync />
       {activeRepo ? <Workspace repo={activeRepo} /> : <ProjectWizard />}
       <SettingsModal />
     </>

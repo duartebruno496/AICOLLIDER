@@ -1,11 +1,24 @@
 export type ProviderKind = "remote" | "local";
-export type ModelVendor = "openai" | "anthropic" | "gemini" | "local";
+export type RemoteVendor = "openai" | "anthropic" | "gemini" | "openrouter" | "groq";
+export type ModelVendor = RemoteVendor | "local";
 
 export interface ApiKeys {
   openai: string;
   anthropic: string;
   gemini: string;
+  openrouter: string;
+  groq: string;
 }
+
+/** Modelos padrão por provedor (usados quando o usuário não escolhe um modelo). */
+export const DEFAULT_MODELS: Record<ModelVendor, string> = {
+  openai: "gpt-4o-mini",
+  anthropic: "claude-3-5-sonnet-latest",
+  gemini: "gemini-2.0-flash",
+  openrouter: "meta-llama/llama-3.3-70b-instruct",
+  groq: "llama-3.3-70b-versatile",
+  local: "Qwen2.5-1.5B-Instruct-q4f16_1-MLC",
+};
 
 export interface TreeNode {
   name: string;

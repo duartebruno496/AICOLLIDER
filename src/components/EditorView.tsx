@@ -1,7 +1,8 @@
 import Editor from "@monaco-editor/react";
-import { FileText, GitCompare } from "lucide-react";
+import { FileText, GitCompare, Save } from "lucide-react";
 import { useAppStore } from "../store/useAppStore";
 import { languageFromPath } from "../lib/monacoSetup";
+import { persistManualChange } from "../lib/commitFile";
 import { Button } from "./common";
 
 export function EditorView({ repo }: { repo: string }) {
@@ -11,13 +12,30 @@ export function EditorView({ repo }: { repo: string }) {
     return (
       <div className="flex flex-1 flex-col items-center justify-center gap-3 text-slate-500">
         <FileText className="h-12 w-12" />
-        <p className="text-sm">Abra um arquivo na árvore à esquerda para começar.</p>
+        <p className="text-sm">Abra ou crie um arquivo na árvore à esquerda para começar. (+ arquivo / + pasta)</p>
       </div>
     );
   }
 
   const language = languageFromPath(selectedPath);
   const modified = modifiedContent !== originalContent;
+
+  async function save() {
+    const s = useAppStore.getState();
+    const path = s.selectedPath;
+    const content = s.modifiedContent;
+    if (!path) return;
+    if (content === s.originalContent) {
+      setToast("Nada para salvar.");
+      return;
+    }
+    try {
+      await persistManualChange(repo, path, content);
+      setToast(`Commit criado: ${path}`);
+    } catch (e) {
+      setToast(`Falha ao salvar: ${e instanceof Error ? e.message : String(e)}`);
+    }
+  }
 
   return (
     <div className="flex min-w-0 flex-1 flex-col">
@@ -27,6 +45,10 @@ export function EditorView({ repo }: { repo: string }) {
           {modified && (
             <span className="flex items-center rounded-lg bg-amber-500/10 px-2 py-1 text-xs text-amber-300">alterações não salvas</span>
           )}
+          <Button onClick={() => void save()} disabled={!modified} className="!min-h-9 !px-3 !py-1.5 !text-xs">
+            <Save className="h-3.5 w-3.5" />
+            Salvar
+          </Button>
           <Button variant="secondary" onClick={() => setEditorMode("diff")} disabled={!modified} className="!min-h-9 !px-3 !py-1.5 !text-xs">
             <GitCompare className="h-3.5 w-3.5" />
             Revisar mudanças
@@ -39,6 +61,9 @@ export function EditorView({ repo }: { repo: string }) {
         language={language}
         value={modifiedContent}
         onChange={(v) => setModified(v ?? "")}
+        onMount={(editor, monaco) => {
+          editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, () => void save());
+        }}
         options={{
           minimap: { enabled: false },
           wordWrap: "on",

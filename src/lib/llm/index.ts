@@ -1,37 +1,42 @@
-import type { ChatMessage } from "../../types";
+import type { ChatMessage, RemoteVendor } from "../../types";
 import { useAppStore } from "../../store/useAppStore";
 import type { LLMMessage, LLMProvider } from "./types";
 import { DEFAULT_MODELS } from "./types";
 import { OpenAIProvider } from "./providers/openai";
 import { AnthropicProvider } from "./providers/anthropic";
 import { GeminiProvider } from "./providers/gemini";
+import { OpenRouterProvider } from "./providers/openrouter";
+import { GroqProvider } from "./providers/groq";
 import { LocalWebLLMProvider } from "./providers/local";
 
 let localProvider: LocalWebLLMProvider | null = null;
 
+const REMOTE_BUILDERS: Record<RemoteVendor, (key: string, model: string) => LLMProvider> = {
+  openai: (k, m) => new OpenAIProvider(k, m),
+  anthropic: (k, m) => new AnthropicProvider(k, m),
+  gemini: (k, m) => new GeminiProvider(k, m),
+  openrouter: (k, m) => new OpenRouterProvider(k, m),
+  groq: (k, m) => new GroqProvider(k, m),
+};
+
 export function buildProvider(): LLMProvider {
-  const { vendor, apiKeys, localModel } = useAppStore.getState();
-  switch (vendor) {
-    case "openai":
-      return new OpenAIProvider(apiKeys.openai.trim(), DEFAULT_MODELS.openai);
-    case "anthropic":
-      return new AnthropicProvider(apiKeys.anthropic.trim(), DEFAULT_MODELS.anthropic);
-    case "gemini":
-      return new GeminiProvider(apiKeys.gemini.trim(), DEFAULT_MODELS.gemini);
-    case "local":
-    default: {
-      if (!localProvider) {
-        localProvider = new LocalWebLLMProvider(localModel, (p) => {
-          useAppStore.getState().setLocalProgress(p);
-        });
-      }
-      if (localProvider.model !== localModel) {
-        localProvider = new LocalWebLLMProvider(localModel, (p) => {
-          useAppStore.getState().setLocalProgress(p);
-        });
-      }
-      return localProvider;
+  const { vendor, apiKeys, models, localModel } = useAppStore.getState();
+  if (vendor !== "local") {
+    const build = REMOTE_BUILDERS[vendor];
+    if (build) return build(apiKeys[vendor].trim(), (models[vendor] || DEFAULT_MODELS[vendor]).trim());
+  }
+  {
+    if (!localProvider) {
+      localProvider = new LocalWebLLMProvider(localModel, (p) => {
+        useAppStore.getState().setLocalProgress(p);
+      });
     }
+    if (localProvider.model !== localModel) {
+      localProvider = new LocalWebLLMProvider(localModel, (p) => {
+        useAppStore.getState().setLocalProgress(p);
+      });
+    }
+    return localProvider;
   }
 }
 

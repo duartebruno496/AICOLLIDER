@@ -6,10 +6,12 @@ import type {
   LocalProgress,
   ModelVendor,
   PendingChange,
+  RemoteVendor,
   StorageInfo,
   SyncInfo,
   TreeNode,
 } from "../types";
+import { DEFAULT_MODELS } from "../types";
 
 export interface SupabaseConfig {
   url: string;
@@ -31,10 +33,16 @@ export interface AppState {
   setVendor: (v: ModelVendor) => void;
   apiKeys: ApiKeys;
   setApiKey: (vendor: keyof ApiKeys, key: string) => void;
+  models: Record<RemoteVendor, string>;
+  setModel: (vendor: RemoteVendor, model: string) => void;
   localModel: string;
   setLocalModel: (m: string) => void;
   agentEnabled: boolean;
   setAgentEnabled: (v: boolean) => void;
+  syncApiKeys: boolean;
+  setSyncApiKeys: (v: boolean) => void;
+  profileLastSync: string | null;
+  setProfileLastSync: (t: string | null) => void;
 
   // ---- Chat ----
   chat: ChatMessage[];
@@ -80,7 +88,15 @@ export interface AppState {
   setToast: (t: string | null) => void;
 }
 
-const initialApiKeys: ApiKeys = { openai: "", anthropic: "", gemini: "" };
+const initialApiKeys: ApiKeys = { openai: "", anthropic: "", gemini: "", openrouter: "", groq: "" };
+
+const initialModels: Record<RemoteVendor, string> = {
+  openai: DEFAULT_MODELS.openai,
+  anthropic: DEFAULT_MODELS.anthropic,
+  gemini: DEFAULT_MODELS.gemini,
+  openrouter: DEFAULT_MODELS.openrouter,
+  groq: DEFAULT_MODELS.groq,
+};
 
 export const useAppStore = create<AppState>()(
   persist(
@@ -116,10 +132,17 @@ export const useAppStore = create<AppState>()(
       apiKeys: initialApiKeys,
       setApiKey: (vendor, key) =>
         set((s) => ({ apiKeys: { ...s.apiKeys, [vendor]: key } })),
+      models: initialModels,
+      setModel: (vendor, model) =>
+        set((s) => ({ models: { ...s.models, [vendor]: model } })),
       localModel: "Qwen2.5-1.5B-Instruct-q4f16_1-MLC",
       setLocalModel: (m) => set({ localModel: m }),
       agentEnabled: true,
       setAgentEnabled: (v) => set({ agentEnabled: v }),
+      syncApiKeys: false,
+      setSyncApiKeys: (v) => set({ syncApiKeys: v }),
+      profileLastSync: null,
+      setProfileLastSync: (t) => set({ profileLastSync: t }),
 
       chat: [],
       appendChat: (m) => set((s) => ({ chat: [...s.chat, m] })),
@@ -167,8 +190,10 @@ export const useAppStore = create<AppState>()(
         supabaseConfig: s.supabaseConfig,
         vendor: s.vendor,
         apiKeys: s.apiKeys,
+        models: s.models,
         localModel: s.localModel,
         agentEnabled: s.agentEnabled,
+        syncApiKeys: s.syncApiKeys,
         activeRepo: s.activeRepo,
         repositoryUrl: s.repositoryUrl,
         repoDirs: s.repoDirs,
