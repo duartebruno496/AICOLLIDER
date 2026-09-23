@@ -108,8 +108,8 @@ export const useAppStore = create<AppState>()(
       setGitToken: (token, name, avatar, source) => {
         if (token) {
           try {
-            sessionStorage.setItem(
-              "aicollider:git",
+            localStorage.setItem(
+              "aicollider:session",
               JSON.stringify({ token, name: name ?? null, avatar: avatar ?? null, source: source ?? null })
             );
           } catch {
@@ -117,7 +117,7 @@ export const useAppStore = create<AppState>()(
           }
         } else {
           try {
-            sessionStorage.removeItem("aicollider:git");
+            localStorage.removeItem("aicollider:session");
           } catch {
             /* storage indisponível */
           }

@@ -34,6 +34,16 @@ export default function App() {
   useEffect(() => {
     void getFS();
     void purgeStaleServiceWorkers();
+    // Sessão persistente: se já logou antes, volta direto pro editor.
+    try {
+      const raw = localStorage.getItem("aicollider:session");
+      if (raw && !useAppStore.getState().gitToken) {
+        const saved = JSON.parse(raw) as { token?: string; name?: string | null; avatar?: string | null; source?: string | null };
+        if (saved.token) useAppStore.getState().setGitToken(saved.token, saved.name ?? null, saved.avatar ?? null, saved.source as never);
+      }
+    } catch {
+      /* ignore */
+    }
   }, []);
 
   useEffect(() => {

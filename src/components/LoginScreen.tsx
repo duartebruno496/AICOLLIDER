@@ -154,7 +154,7 @@ export function LoginScreen({ onOpenSettings }: { onOpenSettings?: () => void })
                 {busyToken ? <Loader2 className="h-4 w-4 animate-spin" /> : <KeyRound className="h-4 w-4" />}
                 Entrar e abrir o editor
               </button>
-              <p className="mt-2 text-[11px] text-slate-500">O token fica só na sessão da aba (some ao fechar).</p>
+              <p className="mt-2 text-[11px] text-slate-500">Sessão salva nesta máquina: nas próximas visitas o app já abre direto no editor.</p>
             </div>
 
             <div className="my-5 flex items-center gap-3 text-xs text-slate-600">
@@ -237,7 +237,7 @@ export function LoginScreen({ onOpenSettings }: { onOpenSettings?: () => void })
           ) : (
             <span />
           )}
-          <span>Token só na memória da aba</span>
+          <span>Sessão salva neste navegador</span>
         </div>
       </div>
     </div>
