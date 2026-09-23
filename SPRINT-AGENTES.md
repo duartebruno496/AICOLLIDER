@@ -51,10 +51,19 @@ Ao terminar cada sprint, ANTES do deploy:
 
 **Objetivo:** equipes/múltiplos agentes propõem mudanças sem conflito de aprovação.
 
-- [ ] `diffGateway` vira fila (`pendingChanges[]`); DiffViewer mostra o primeiro; Aceitar/Rejeitar decide e avança.
-- [ ] Agente aguarda a vez (Promise resolve quando o diff dele chega ao topo e é decidido).
-- [ ] Indicador no chat: "n diffs na fila" + autor.
-- [ ] Revisão de código + SI. Deploy.
+- [x] `diffGateway` vira fila (`pendingChanges[]`); DiffViewer mostra o primeiro; Aceitar/Rejeitar decide e avança.
+- [x] Agente aguarda a vez (Promise resolve quando o diff dele chega ao topo e é decidido).
+- [x] Indicador no chat: "n diffs na fila" + autor.
+- [x] Revisão de código + SI. Deploy. (commits `e2317de`, `3407c36`, `6461bec`; run 35899226269 ✓)
+
+## Extras (mesmo ciclo) — Versão portátil
+
+**Objetivo:** botão "Baixar portátil (ZIP)" para rodar 100% local (abrir `index.html` do disco).
+
+- [x] `base: "./"` (build relativo; funciona em GitHub Pages e `file://`); `start_url: "./"`.
+- [x] SW só registra em http(s) (`main.tsx` guard + `injectRegister: null`); `index.html` com caminhos relativos.
+- [x] Workflow: gera `aicollider-portable.zip` e publica no Release `portable` (`gh release create/upload`); arquivo no `.gitignore`.
+- [x] Botões: Landing page (hero) + badge no README apontando `releases/download/portable/aicollider-portable.zip`. Deploy ✓.
 
 ## Fora de escopo (pendências abertas)
 
