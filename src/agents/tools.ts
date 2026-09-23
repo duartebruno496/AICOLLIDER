@@ -24,7 +24,7 @@ export const TOOLS: LLMToolDef[] = [
     function: {
       name: "readFile",
       description:
-        "Lê o conteúdo atual de um arquivo dentro do repositório virtual e o retorna como texto.",
+        "Lê o conteúdo atual de um arquivo dentro do repositório virtual e o retorna como texto. Use 'from'/'to' (linhas, 1-based) para ler apenas um trecho e economizar contexto.",
       parameters: {
         type: "object",
         properties: {
@@ -32,8 +32,86 @@ export const TOOLS: LLMToolDef[] = [
             type: "string",
             description: "Caminho do arquivo dentro do repositório (ex.: 'src/App.tsx', 'README.md').",
           },
+          from: {
+            type: "number",
+            description: "Linha inicial (opcional, 1-based).",
+          },
+          to: {
+            type: "number",
+            description: "Linha final (opcional).",
+          },
         },
         required: ["path"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "searchCode",
+      description:
+        "Busca um termo em TODOS os arquivos de texto do projeto aberto (ignora node_modules, dist, .git etc.) e retorna ocorrências no formato arquivo:linha: trecho. Use para localizar onde algo é usado/definido antes de ler o arquivo.",
+      parameters: {
+        type: "object",
+        properties: {
+          term: {
+            type: "string",
+            description: "Termo a buscar (case-insensitive).",
+          },
+          path: {
+            type: "string",
+            description: "Pasta opcional para limitar a busca (ex.: 'src').",
+          },
+        },
+        required: ["term"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "githubListFiles",
+      description:
+        "Lista a árvore de arquivos de um repositório NO GITHUB (sem clonar). Use para explorar repos remotos, branches ou PRs. Exige login no GitHub.",
+      parameters: {
+        type: "object",
+        properties: {
+          repo: {
+            type: "string",
+            description: "Repositório no formato 'dono/nome' (ex.: 'facebook/react').",
+          },
+          ref: {
+            type: "string",
+            description: "Branch, tag ou SHA opcional (padrão: branch principal).",
+          },
+        },
+        required: ["repo"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "githubReadFile",
+      description:
+        "Lê o conteúdo texto de um arquivo de um repositório NO GITHUB (sem clonar). Exige login no GitHub. Limite da API: até 1 MB por arquivo.",
+      parameters: {
+        type: "object",
+        properties: {
+          repo: {
+            type: "string",
+            description: "Repositório no formato 'dono/nome' (ex.: 'facebook/react').",
+          },
+          path: {
+            type: "string",
+            description: "Caminho do arquivo no repo remoto (ex.: 'src/App.js').",
+          },
+          ref: {
+            type: "string",
+            description: "Branch, tag ou SHA opcional (padrão: branch principal).",
+          },
+        },
+        required: ["repo", "path"],
       },
     },
   },

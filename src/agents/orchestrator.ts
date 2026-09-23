@@ -18,6 +18,9 @@ REGRAS RESTRITAS DE DEPLOY E INFRA:
 FLUXO DE TRABALHO:
 - Você recebe uma instrução. Comece respondendo com uma linha curta "Plano: ..." listando os passos.
 - Use listFiles para ver o projeto, readFile para ler arquivos e ENTÃO sugira mudanças com suggestCodeChange.
+- Para achar onde algo existe no código, use searchCode (busca global ignorando node_modules/dist).
+- Prefira readFile com 'from'/'to' quando só precisar de um trecho (economiza contexto).
+- Para ver repositórios remotos (não clonados), branchs ou PRs, use githubListFiles/githubReadFile — leitura apenas, sem clonar, sem aprovação. Se o repositório a editar não estiver clonado e o usuário quiser mexer nele, avise que precisa clonar pela tela de projetos.
 - suggestCodeChange NUNCA salva direto: um humano precisa clicar em "Aceitar" no diff. Se a tool retornar que a mudança foi rejeitada, respeite a decisão e ajuste ou desista.
 - Ao criar arquivos use sempre o conteúdo COMPLETO do arquivo.
 - Responda de forma objetiva em português.`;
@@ -47,7 +50,25 @@ export class Orchestrator {
       }
       case "readFile": {
         const path = typeof args.path === "string" ? args.path : "";
-        return { result: await this.coder.readFile(path), wasApproval: false };
+        const from = typeof args.from === "number" && Number.isFinite(args.from) ? args.from : undefined;
+        const to = typeof args.to === "number" && Number.isFinite(args.to) ? args.to : undefined;
+        return { result: await this.coder.readFile(path, from, to), wasApproval: false };
+      }
+      case "searchCode": {
+        const term = typeof args.term === "string" ? args.term : "";
+        const path = typeof args.path === "string" ? args.path : "";
+        return { result: await this.coder.searchCode(term, path), wasApproval: false };
+      }
+      case "githubListFiles": {
+        const repo = typeof args.repo === "string" ? args.repo : "";
+        const ref = typeof args.ref === "string" && args.ref ? args.ref : undefined;
+        return { result: await this.coder.githubListFiles(repo, ref), wasApproval: false };
+      }
+      case "githubReadFile": {
+        const repo = typeof args.repo === "string" ? args.repo : "";
+        const path = typeof args.path === "string" ? args.path : "";
+        const ref = typeof args.ref === "string" && args.ref ? args.ref : undefined;
+        return { result: await this.coder.githubReadFile(repo, path, ref), wasApproval: false };
       }
       case "suggestCodeChange": {
         const path = typeof args.path === "string" ? args.path : "";
