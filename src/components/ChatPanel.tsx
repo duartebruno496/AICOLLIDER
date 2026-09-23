@@ -145,7 +145,7 @@ export function ChatPanel({ repo }: { repo: string | null }) {
 
       {vendor === "local" && agentEnabled && !localModelSupportsTools(localModel) && (
         <p className="border-b border-surface-600 bg-amber-500/10 px-3 py-1.5 text-xs text-amber-300">
-          O modelo local atual não suporta tools — o Modo Agente só poderá conversar. Escolha um <b>Hermes</b> em Configurações → Modelos ou use um provedor remoto.
+          Este modelo leve usa <b>tool calling manual</b> — o Modo Agente funciona, porém com menos confiabilidade. <b>Hermes</b> usa tools nativos (recomendado).
         </p>
       )}
 

@@ -1,4 +1,4 @@
-import type { LLMProvider, LLMRequest, LLMResponse, LLMToolCall } from "../types";
+import type { LLMProvider, LLMRequest, LLMResponse, LLMToolCall, LLMToolDef } from "../types";
 import { normalizeLLMMessages } from "../types";
 
 declare global {
@@ -7,9 +7,65 @@ declare global {
   }
 }
 
-/** Modelos WebLLM (MLC) com function calling — fonte: erro oficial do WebLLM. */
+/** Modelos WebLLM (MLC) com function calling nativo via campo `tools` — fonte: erro oficial do WebLLM. */
 export function localModelSupportsTools(model: string): boolean {
   return /hermes/i.test(model);
+}
+
+/** Converte os schemas de tools em instruções no formato Hermes (<tool_call>). */
+export function buildToolInstructions(tools: LLMToolDef[]): string {
+  const list = tools
+    .map((t) =>
+      JSON.stringify({
+        name: t.function.name,
+        description: t.function.description,
+        parameters: t.function.parameters,
+      })
+    )
+    .join(",\n");
+  return [
+    "Você tem acesso às seguintes funções:",
+    "",
+    "<functions>",
+    list,
+    "</functions>",
+    "",
+    "Se precisar usar uma função, responda EXATAMENTE com o bloco a seguir (nada antes nem depois), em JSON válido:",
+    '<tool_call>{"name": "nome_da_funcao", "arguments": { ... }}</tool_call>',
+    "Se não precisar de função, responda normalmente em português.",
+  ].join("\n");
+}
+
+/** Extrai chamadas de ferramenta no formato Hermes de uma resposta em texto. */
+export function extractManualToolCalls(content: string): LLMToolCall[] {
+  const out: LLMToolCall[] = [];
+  const re = /<tool_call>([\s\S]*?)<\/tool_call>/g;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(content)) !== null) {
+    try {
+      const parsed = JSON.parse(m[1].trim()) as { name?: unknown; arguments?: unknown };
+      const name = typeof parsed?.name === "string" ? parsed.name : "";
+      const args = parsed?.arguments && typeof parsed.arguments === "object" ? parsed.arguments : {};
+      if (name) {
+        out.push({
+          id: `call_${Math.random().toString(36).slice(2, 10)}`,
+          name,
+          arguments: JSON.stringify(args),
+        });
+      }
+    } catch {
+      // bloco inválido — ignora
+    }
+  }
+  return out;
+}
+
+/** Remove blocos de tool calling/raciocínio do texto final exibido ao usuário. */
+export function stripManualToolCalls(content: string): string {
+  return content
+    .replace(/<scratch_pad>[\s\S]*?<\/scratch_pad>/g, "")
+    .replace(/<tool_call>[\s\S]*?<\/tool_call>/g, "")
+    .trim();
 }
 
 export class LocalWebLLMProvider implements LLMProvider {
@@ -56,7 +112,7 @@ export class LocalWebLLMProvider implements LLMProvider {
   async chat(req: LLMRequest): Promise<LLMResponse> {
     const engine = await this.ensureEngine();
     if (!engine) throw new Error("Engine WebLLM não inicializada.");
-    const tools =
+    const nativeTools =
       localModelSupportsTools(this.model) && req.tools?.length
         ? req.tools.map((t) => ({
             type: "function",
@@ -67,7 +123,7 @@ export class LocalWebLLMProvider implements LLMProvider {
             },
           }))
         : undefined;
-    const messages = normalizeLLMMessages(req.messages).map((m) => {
+    let messages = normalizeLLMMessages(req.messages).map((m) => {
       if (m.role === "system") return { role: "system", content: m.content ?? "" };
       if (m.role === "assistant" && m.toolCalls?.length) {
         return {
@@ -86,11 +142,23 @@ export class LocalWebLLMProvider implements LLMProvider {
       return { role: "user", content: m.content ?? "" };
     });
 
+    // Modo manual (modelos fora da allowlist de tools): descreve as funções no system prompt
+    // para o modelo emitir <tool_call>… em texto (formato Hermes), sem usar o campo `tools`.
+    if (!nativeTools && req.tools?.length) {
+      const instructions = buildToolInstructions(req.tools);
+      const sysIdx = messages.findIndex((m) => m.role === "system");
+      if (sysIdx >= 0) {
+        messages[sysIdx] = { role: "system", content: `${messages[sysIdx].content}\n\n${instructions}` };
+      } else {
+        messages = [{ role: "system", content: instructions }, ...messages];
+      }
+    }
+
     const result = (await engine.chat.completions.create({
       messages,
       temperature: req.temperature ?? 0.4,
       stream: false,
-      ...(tools?.length ? { tools, tool_choice: "auto" as const } : {}),
+      ...(nativeTools?.length ? { tools: nativeTools, tool_choice: "auto" as const } : {}),
     })) as {
       choices?: Array<{
         message?: { content?: string | null; tool_calls?: Array<{ id?: string; function: { name: string; arguments: string } }> };
@@ -100,11 +168,17 @@ export class LocalWebLLMProvider implements LLMProvider {
 
     const choice = result.choices?.[0];
     const msg = choice?.message;
-    const toolCalls: LLMToolCall[] = (msg?.tool_calls ?? []).map((tc) => ({
+    const raw = msg?.content ?? "";
+    let toolCalls: LLMToolCall[] = (msg?.tool_calls ?? []).map((tc) => ({
       id: tc.id ?? `call_${Math.random().toString(36).slice(2, 8)}`,
       name: tc.function.name,
       arguments: tc.function.arguments ?? "{}",
     }));
-    return { content: msg?.content ?? "", toolCalls, stopReason: choice?.finish_reason ?? "stop" };
+    let content = raw;
+    if (!nativeTools && toolCalls.length === 0 && raw) {
+      toolCalls = extractManualToolCalls(raw);
+      content = stripManualToolCalls(raw);
+    }
+    return { content, toolCalls, stopReason: choice?.finish_reason ?? "stop" };
   }
 }

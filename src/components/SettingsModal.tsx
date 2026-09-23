@@ -11,6 +11,9 @@ const LOCAL_MODELS = [
   "Hermes-2-Pro-Llama-3-8B-q4f16_1-MLC",
   "Hermes-2-Pro-Llama-3-8B-q4f32_1-MLC",
   "Hermes-2-Pro-Mistral-7B-q4f16_1-MLC",
+  "Qwen2.5-1.5B-Instruct-q4f16_1-MLC",
+  "Qwen2.5-0.5B-Instruct-q4f16_1-MLC",
+  "Llama-3.2-1B-Instruct-q4f16_1-MLC",
 ];
 
 const VENDOR_LABELS: Record<RemoteVendor, string> = {
@@ -184,7 +187,7 @@ export function SettingsModal() {
                     </option>
                   ))}
                 </select>
-                <span className="mt-1 block text-xs text-slate-500">Lista restrita a modelos com function calling (Modo Agente).</span>
+                <span className="mt-1 block text-xs text-slate-500">Hermes usam tools nativos; os leves (Qwen/Llama) usam tool calling manual — menos confiáveis no Modo Agente.</span>
               </Field>
             )}
             <Field label="Endpoint usado">
