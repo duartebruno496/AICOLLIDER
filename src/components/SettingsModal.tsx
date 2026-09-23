@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { KeyRound, Database, Cpu, Cloud, ShieldCheck } from "lucide-react";
 import { useAppStore } from "../store/useAppStore";
-import type { RemoteVendor } from "../types";
+import type { ApiKeys, RemoteVendor } from "../types";
 import { DEFAULT_MODELS } from "../types";
 import { Modal, Button, Field, inputCls } from "./common";
 
@@ -61,8 +61,10 @@ export function SettingsModal() {
 
   const [url, setUrl] = useState(supabaseConfig.url);
   const [anonKey, setAnonKey] = useState(supabaseConfig.anonKey);
-  const [keys, setKeys] = useState({ ...apiKeys });
-  const [selModel, setSelModel] = useState(models);
+  const KEYS_DEFAULTS: ApiKeys = { openai: "", anthropic: "", gemini: "", openrouter: "", groq: "" };
+  const MODELS_DEFAULTS = { ...DEFAULT_MODELS };
+  const [keys, setKeys] = useState<ApiKeys>(() => ({ ...KEYS_DEFAULTS, ...apiKeys }));
+  const [selModel, setSelModel] = useState(() => ({ ...MODELS_DEFAULTS, ...models }));
 
   function saveSupabase() {
     if (url.trim() && anonKey.trim()) {
