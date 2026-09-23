@@ -93,7 +93,7 @@ function ScratchSaveBar({ repo }: { repo: string }) {
 }
 
 export function Workspace({ repo }: { repo: string }) {
-  const { pendingChange, editorMode, showStoragePanel, setShowStoragePanel, setSyncInfo } = useAppStore();
+  const { pendingChanges, editorMode, showStoragePanel, setShowStoragePanel, setSyncInfo } = useAppStore();
   const [mobileChat, setMobileChat] = useState(false);
   const [mobileFiles, setMobileFiles] = useState(false);
 
@@ -103,7 +103,7 @@ export function Workspace({ repo }: { repo: string }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [repo]);
 
-  const showDiff = pendingChange !== null || editorMode === "diff";
+  const showDiff = pendingChanges.length > 0 || editorMode === "diff";
 
   return (
     <div className="flex h-[100dvh] flex-col overflow-hidden bg-slate-950">

@@ -87,7 +87,7 @@ function collectDropItems(dt: DataTransfer): Promise<Array<{ file: File; rel: st
 }
 
 function Node({ node, depth, repo }: { node: TreeNode; depth: number; repo: string }) {
-  const { selectedPath, setSelectedPath, setContents, setEditorMode, pendingChange, setToast } = useAppStore();
+  const { selectedPath, setSelectedPath, setContents, setEditorMode, pendingChanges, setToast } = useAppStore();
   const [open, setOpen] = useState(depth === 0);
   const [busy, setBusy] = useState(false);
   const isDir = node.kind === "dir";
@@ -99,7 +99,7 @@ function Node({ node, depth, repo }: { node: TreeNode; depth: number; repo: stri
   }
 
   async function openFile() {
-    if (pendingChange) {
+    if (pendingChanges.length > 0) {
       toast("Aceite ou rejeite a alteração pendente antes de abrir outro arquivo.");
       return;
     }
@@ -127,7 +127,7 @@ function Node({ node, depth, repo }: { node: TreeNode; depth: number; repo: stri
   }
 
   async function newFileHere() {
-    if (pendingChange) {
+    if (pendingChanges.length > 0) {
       toast("Aceite ou rejeite a alteração pendente antes.");
       return;
     }
@@ -254,13 +254,13 @@ function Node({ node, depth, repo }: { node: TreeNode; depth: number; repo: stri
 }
 
 export function Sidebar({ repo }: { repo: string }) {
-  const { tree, setContents, setSelectedPath, setEditorMode, pendingChange, setToast } = useAppStore();
+  const { tree, setContents, setSelectedPath, setEditorMode, pendingChanges, setToast } = useAppStore();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [importing, setImporting] = useState(false);
   const [dragOver, setDragOver] = useState(false);
 
   async function newFileRoot() {
-    if (pendingChange) {
+    if (pendingChanges.length > 0) {
       setToast("Aceite ou rejeite a alteração pendente antes.");
       return;
     }
@@ -305,7 +305,7 @@ export function Sidebar({ repo }: { repo: string }) {
   }
 
   async function runImport(items: Array<{ file: File; rel: string }>) {
-    if (pendingChange) {
+    if (pendingChanges.length > 0) {
       setToast("Aceite ou rejeite a alteração pendente antes.");
       return;
     }

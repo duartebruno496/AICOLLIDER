@@ -1,8 +1,11 @@
 # ⚡ AICOLLIDER
 
+[![Portátil (ZIP)](https://img.shields.io/badge/Baixar%20port%C3%A1til-ZIP-22c55e?style=for-the-badge)](https://github.com/duartebruno496/AICOLLIDER/releases/download/portable/aicollider-portable.zip)
+
 Assistente de Vibe Coding **multi-plataforma**, 100% client-side.
 
 - **PWA** instalável (Rodar nos navegadores, tablets e pads)
+- **Portátil**: baixe o ZIP, descompacte e abra `index.html` para rodar **100% local** (sem servidor, sem hospedagem)
 - **Git no navegador** via `isomorphic-git` + `@isomorphic-git/lightning-fs` (IndexedDB, namespace `AicolliderFS`)
 - **Sem backend Node.js**. Tudo acontece no navegador do usuário.
 - **IA local** via `@mlc-ai/web-llm` (WebGPU/WASM) ou **IA remota** (OpenAI/Anthropic/Gemini) com chaves no `localStorage` (BYOK).

@@ -74,8 +74,8 @@ export interface AppState {
   setModified: (modified: string) => void;
   editorMode: "code" | "diff";
   setEditorMode: (m: "code" | "diff") => void;
-  pendingChange: PendingChange | null;
-  setPendingChange: (p: PendingChange | null) => void;
+  pendingChanges: PendingChange[];
+  setPendingChanges: (list: PendingChange[]) => void;
   syncInfo: SyncInfo;
   setSyncInfo: (s: SyncInfo) => void;
   storage: StorageInfo | null;
@@ -174,8 +174,8 @@ export const useAppStore = create<AppState>()(
       setModified: (modified) => set({ modifiedContent: modified }),
       editorMode: "code",
       setEditorMode: (m) => set({ editorMode: m }),
-      pendingChange: null,
-      setPendingChange: (p) => set({ pendingChange: p }),
+      pendingChanges: [],
+      setPendingChanges: (list) => set({ pendingChanges: list }),
       syncInfo: { status: "unknown" },
       setSyncInfo: (s) => set({ syncInfo: s }),
       storage: null,

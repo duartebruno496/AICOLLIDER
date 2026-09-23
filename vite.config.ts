@@ -3,11 +3,12 @@ import react from "@vitejs/plugin-react";
 import { VitePWA } from "vite-plugin-pwa";
 
 export default defineConfig({
-  base: "/AICOLLIDER/",
+  base: "./",
   plugins: [
     react(),
     VitePWA({
       registerType: "autoUpdate",
+      injectRegister: null,
       includeAssets: ["icons/icon.svg"],
       manifest: {
         name: "AICOLLIDER",
@@ -18,7 +19,7 @@ export default defineConfig({
         background_color: "#0f172a",
         display: "standalone",
         orientation: "landscape",
-        start_url: "/",
+        start_url: "./",
         lang: "pt-BR",
         icons: [
           { src: "icons/icon-192.png", sizes: "192x192", type: "image/png" },

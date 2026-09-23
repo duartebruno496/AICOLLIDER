@@ -3,32 +3,39 @@ import { useAppStore } from "../store/useAppStore";
 
 type Resolver = (ok: boolean) => void;
 
-let currentResolver: Resolver | null = null;
+interface QueueEntry {
+  change: PendingChange;
+  resolve: Resolver;
+}
+
+let queue: QueueEntry[] = [];
+
+function sync() {
+  useAppStore.getState().setPendingChanges(queue.map((e) => e.change));
+}
 
 export function hasPendingApproval(): boolean {
-  return useAppStore.getState().pendingChange !== null;
+  return useAppStore.getState().pendingChanges.length > 0;
 }
 
 /**
- * Abre o DiffViewer com a mudança proposta e retorna uma Promise
- * que só resolve quando o humano clicar em "Aceitar" ou "Rejeitar".
+ * Enfileira um diff para aprovação humana (fila única FIFO).
+ * O humano decide os diffs na ordem de chegada; esta Promise só resolve
+ * quando o diff for o da frente E for decidido (Aceitar/Rejeitar).
  */
-export function waitForApproval(change: Omit<PendingChange, "fromAgent">): Promise<boolean> {
-  if (currentResolver) {
-    currentResolver(false);
-    currentResolver = null;
-  }
-  useAppStore.getState().setPendingChange({ ...change, fromAgent: true });
+export function waitForApproval(change: Omit<PendingChange, "fromAgent" | "from">, from = "Agente"): Promise<boolean> {
+  const full: PendingChange = { ...change, fromAgent: true, from };
   return new Promise<boolean>((resolve) => {
-    currentResolver = resolve;
+    queue.push({ change: full, resolve });
+    sync();
   });
 }
 
+/** Decide o diff da frente da fila. Retorna false se não havia nada pendente. */
 export function settlePendingChange(ok: boolean): boolean {
-  if (!currentResolver) return false;
-  const r = currentResolver;
-  currentResolver = null;
-  useAppStore.getState().setPendingChange(null);
-  r(ok);
+  if (queue.length === 0) return false;
+  const [head] = queue.splice(0, 1);
+  sync();
+  head.resolve(ok);
   return true;
 }

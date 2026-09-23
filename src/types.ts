@@ -62,6 +62,8 @@ export interface PendingChange {
   modified: string;
   reason?: string;
   fromAgent: boolean;
+  /** Rótulo de quem propôs (ex.: "Engenheiro", "Revisor"). */
+  from?: string;
 }
 
 export interface StorageInfo {

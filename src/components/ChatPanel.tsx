@@ -27,7 +27,7 @@ const KEY_HINTS: Record<RemoteVendor, string> = {
 export function ChatPanel({ repo }: { repo: string | null }) {
   const {
     chat, appendChat, replaceChat, agentRunning, setAgentRunning, vendor, setVendor,
-    activeRepo, setToast, localProgress, apiKeys, setApiKey, localModel,
+    activeRepo, setToast, localProgress, apiKeys, setApiKey, localModel, pendingChanges,
   } = useAppStore();
   const [input, setInput] = useState("");
   const [keyDraft, setKeyDraft] = useState("");
@@ -152,6 +152,16 @@ export function ChatPanel({ repo }: { repo: string | null }) {
       )}
 
       <div ref={scrollRef} className="flex-1 space-y-2 overflow-y-auto p-3">
+        {pendingChanges.length > 0 && (
+          <div className="flex justify-start">
+            <div className="flex items-center gap-2 rounded-xl border border-amber-500/40 bg-amber-500/10 px-3 py-1.5 text-xs text-amber-200">
+              <Wrench className="h-3.5 w-3.5" />
+              {pendingChanges.length === 1
+                ? "1 diff aguardando seu OK — revise e clique Aceitar/Rejeitar"
+                : `${pendingChanges.length} diffs na fila — revise na ordem de chegada`}
+            </div>
+          </div>
+        )}
         {chat.length === 0 && (
           <p className="rounded-xl border border-dashed border-surface-600 p-4 text-center text-xs text-slate-500">
             {canAgent ? (

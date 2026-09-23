@@ -6,12 +6,12 @@ import { persistManualChange } from "../lib/commitFile";
 import { settlePendingChange } from "../agents/diffGateway";
 
 export function DiffViewer({ repo }: { repo: string }) {
-  const { pendingChange, originalContent, modifiedContent, selectedPath, setEditorMode, setContents, setToast } = useAppStore();
-
-  const agentMode = pendingChange !== null;
-  const path = agentMode ? pendingChange!.path : selectedPath ?? "";
-  const original = agentMode ? pendingChange!.original : originalContent;
-  const modified = agentMode ? pendingChange!.modified : modifiedContent;
+  const { pendingChanges, originalContent, modifiedContent, selectedPath, setEditorMode, setContents, setToast } = useAppStore();
+  const current = pendingChanges.length > 0 ? pendingChanges[0] : null;
+  const agentMode = current !== null;
+  const path = agentMode ? current.path : selectedPath ?? "";
+  const original = agentMode ? current.original : originalContent;
+  const modified = agentMode ? current.modified : modifiedContent;
   const language = languageFromPath(path);
 
   async function handleAccept() {
@@ -45,7 +45,11 @@ export function DiffViewer({ repo }: { repo: string }) {
         <span className="flex items-center gap-2 font-mono text-xs text-slate-300">
           {agentMode && <Sparkles className="h-3.5 w-3.5 text-emerald-400" />}
           {repo}/{path}
-          <span className="text-slate-500">{agentMode ? "· sugestão da IA aguardando aprovação" : "· revisão de mudanças"}</span>
+          <span className="text-slate-500">
+            {agentMode
+              ? `· sugestão de ${current.from ?? "IA"} aguardando aprovação${pendingChanges.length > 1 ? ` · ${pendingChanges.length} diffs na fila` : ""}`
+              : "· revisão de mudanças"}
+          </span>
         </span>
         <span className="mr-16 text-xs text-slate-500">original → modificado</span>
       </div>

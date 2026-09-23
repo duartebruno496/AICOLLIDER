@@ -86,7 +86,7 @@ export class Orchestrator {
           };
         }
 
-        const approved = await waitForApproval({ ...change, reason });
+        const approved = await waitForApproval({ ...change, reason }, "Engenheiro");
         if (approved) {
           await this.coder.applyApprovedChange(change);
           return { result: `APROVADO pelo humano e commitado: '${path}'.`, wasApproval: true };

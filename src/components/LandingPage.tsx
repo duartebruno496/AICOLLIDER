@@ -1,4 +1,4 @@
-import { Bot, GitBranch, ShieldCheck, Cpu, ArrowRight, Sparkles, Zap, ServerOff, Layers } from "lucide-react";
+import { Bot, GitBranch, ShieldCheck, Cpu, ArrowRight, Sparkles, Zap, ServerOff, Layers, Download } from "lucide-react";
 
 export function LandingPage({ onEnter }: { onEnter: () => void }) {
   const cards = [
@@ -59,6 +59,14 @@ export function LandingPage({ onEnter }: { onEnter: () => void }) {
               className="flex min-h-12 items-center justify-center gap-2 rounded-2xl border border-surface-600 bg-surface-900/60 px-6 py-3.5 text-base font-medium text-slate-200 hover:bg-surface-800 sm:w-auto touch-manipulation"
             >
               Como funciona
+            </a>
+            <a
+              href="https://github.com/duartebruno496/AICOLLIDER/releases/download/portable/aicollider-portable.zip"
+              target="_blank"
+              rel="noreferrer"
+              className="flex min-h-12 items-center justify-center gap-2 rounded-2xl border border-surface-600 bg-surface-900/60 px-6 py-3.5 text-base font-medium text-slate-200 hover:bg-surface-800 sm:w-auto touch-manipulation"
+            >
+              <Download className="h-5 w-5" /> Baixar portátil (ZIP)
             </a>
           </div>
 
