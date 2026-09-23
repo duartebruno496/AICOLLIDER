@@ -54,7 +54,7 @@ Ao terminar cada sprint, ANTES do deploy:
 - [x] `diffGateway` vira fila (`pendingChanges[]`); DiffViewer mostra o primeiro; Aceitar/Rejeitar decide e avança.
 - [x] Agente aguarda a vez (Promise resolve quando o diff dele chega ao topo e é decidido).
 - [x] Indicador no chat: "n diffs na fila" + autor.
-- [x] Revisão de código + SI. Deploy. (commits `e2317de`, `3407c36`, `6461bec`; run 35899226269 ✓)
+- [x] Revisão de código + SI. Deploy. (commits `e2317de`, `3407c36`, `6461bec`; run 35899802936 ✓)
 
 ## Extras (mesmo ciclo) — Versão portátil
 
@@ -73,16 +73,16 @@ Ao terminar cada sprint, ANTES do deploy:
 
 **Objetivo:** modelar `Skill`/`Agent` no código (registry tipado) e expor `githubListRepos` (escolher repo do GitHub sem digitar URL).
 
-- [ ] `src/agents/profiles.ts` (ou registro): definições de `AgentSkill` e `AgentProfile` com referência por id.
-- [ ] Tool `githubListRepos` (usa `githubListUserRepos`) + schema em `tools.ts` + case no Orchestrator + prompt.
-- [ ] Brida nos agentes existentes para consumir o registry (sem mudar comportamento visível).
-- [ ] Revisão de código + SI. Deploy.
+- [x] `src/agents/profiles.ts` (ou registro): definições de `AgentSkill` e `AgentProfile` com referência por id.
+- [x] Tool `githubListRepos` (usa `githubListUserRepos`) + schema em `tools.ts` + case no Orchestrator + prompt.
+- [x] Brida nos agentes existentes para consumir o registry (sem mudar comportamento visível).
+- [x] Revisão de código + SI. Deploy.
 
 ## Sprint 5 — Equipe multi-agente pré-criada (Fase 3, parte 2)
 
 **Objetivo:** equipe fixa no modo agente: Orchestrator + Engenheiro + Revisor + PM, com fila única de diffs.
 
-- [ ] `TeamOrchestrator`: pipeline PM (plano) → Engenheiro (tenta mudanças) → Revisor (qualidade) com um LLM.
-- [ ] Seletor no ChatPanel: "Agente único" vs "Equipe pré-criada".
-- [ ] Rotular diffs com o agente proponente (Engenheiro/PM) na fila.
-- [ ] Revisão de código + SI. Deploy.
+- [x] `TeamOrchestrator`: pipeline PM (plano) → Engenheiro (tenta mudanças) → Revisor (qualidade) com um LLM.
+- [x] Seletor no ChatPanel: "Agente único" vs "Equipe pré-criada".
+- [x] Rotular diffs com o agente proponente (Engenheiro/PM) na fila.
+- [x] Revisão de código + SI. Deploy. (commit `f1b0c1a`; run 35900920398 ✓)
