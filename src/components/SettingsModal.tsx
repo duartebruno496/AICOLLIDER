@@ -138,7 +138,7 @@ export function SettingsModal() {
                   <button
                     type="button"
                     onClick={() => setVendor(v)}
-                    disabled={!keys[v].trim()}
+                    disabled={!(keys[v] ?? "").trim()}
                     className="shrink-0 rounded-xl border border-surface-600 px-3 text-xs text-slate-400 hover:border-emerald-500 hover:text-emerald-300 disabled:opacity-40 touch-manipulation"
                   >
                     usar

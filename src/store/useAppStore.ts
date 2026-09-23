@@ -186,6 +186,15 @@ export const useAppStore = create<AppState>()(
     }),
     {
       name: "aicollider-settings",
+      merge: (persisted, current) => {
+        const p = persisted as Partial<AppState>;
+        return {
+          ...current,
+          ...p,
+          apiKeys: { ...current.apiKeys, ...p.apiKeys },
+          models: { ...current.models, ...p.models },
+        };
+      },
       partialize: (s) => ({
         supabaseConfig: s.supabaseConfig,
         vendor: s.vendor,

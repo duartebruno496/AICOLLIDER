@@ -23,7 +23,7 @@ export function buildProvider(): LLMProvider {
   const { vendor, apiKeys, models, localModel } = useAppStore.getState();
   if (vendor !== "local") {
     const build = REMOTE_BUILDERS[vendor];
-    if (build) return build(apiKeys[vendor].trim(), (models[vendor] || DEFAULT_MODELS[vendor]).trim());
+    if (build) return build((apiKeys[vendor] ?? "").trim(), (models[vendor] || DEFAULT_MODELS[vendor]).trim());
   }
   {
     if (!localProvider) {
