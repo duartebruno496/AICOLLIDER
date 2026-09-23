@@ -3,6 +3,7 @@ import { Bot, Cpu, SendHorizonal, KeyRound, Loader2, MessageSquare, Wrench } fro
 import { useAppStore, uid } from "../store/useAppStore";
 import { simpleChat, providerAvailable } from "../lib/llm";
 import { Orchestrator } from "../agents/orchestrator";
+import { TeamOrchestrator } from "../agents/team";
 import { buildProvider } from "../lib/llm";
 import { loadChat, saveChatDebounced } from "../lib/chatDb";
 import { localModelSupportsTools } from "../lib/llm/providers/local";
@@ -32,6 +33,7 @@ export function ChatPanel({ repo }: { repo: string | null }) {
   const [input, setInput] = useState("");
   const [keyDraft, setKeyDraft] = useState("");
   const [msgMode, setMsgMode] = useState<ChatMode>(() => useAppStore.getState().chatMode);
+  const [teamMode, setTeamMode] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -78,10 +80,18 @@ export function ChatPanel({ repo }: { repo: string | null }) {
     try {
       if (canAgent && repo) {
         const provider = buildProvider();
-        const orch = new Orchestrator(provider, repo);
-        const { finalText, appliedChanges } = await orch.run(chat.concat([{ id: uid(), role: "user", content: text }]));
-        appendChat({ id: uid(), role: "assistant", content: finalText });
-        if (appliedChanges > 0) setToast(`${appliedChanges} alteração(ões) aprovada(s) e commitada(s).`);
+        const ctx = chat.concat([{ id: uid(), role: "user", content: text }]);
+        if (teamMode) {
+          const team = new TeamOrchestrator(provider, repo);
+          const { finalText, appliedChanges } = await team.run(ctx);
+          appendChat({ id: uid(), role: "assistant", content: finalText });
+          if (appliedChanges > 0) setToast(`${appliedChanges} alteração(ões) aprovada(s) e commitada(s).`);
+        } else {
+          const orch = new Orchestrator(provider, repo);
+          const { finalText, appliedChanges } = await orch.run(ctx);
+          appendChat({ id: uid(), role: "assistant", content: finalText });
+          if (appliedChanges > 0) setToast(`${appliedChanges} alteração(ões) aprovada(s) e commitada(s).`);
+        }
       } else {
         const sysCtx = repo
           ? `Repositório virtual aberto: ${repo}. Você está em MODO CONVERSA (sem tools): responda com base no histórico e contexto; NÃO invente conteúdo de arquivos ou do projeto. Para editar código, o usuário muda para o modo Agente.`
@@ -266,6 +276,25 @@ export function ChatPanel({ repo }: { repo: string | null }) {
             </button>
           ))}
         </div>
+        {msgMode === "agent" && activeRepo && (
+          <div className="mb-2 flex items-center justify-between gap-2 rounded-xl border border-surface-700 bg-surface-900/60 px-3 py-2">
+            <div className="min-w-0">
+              <p className="text-xs font-semibold text-slate-200">Equipe pré-criada</p>
+              <p className="truncate text-[11px] text-slate-500">PM planeja → Engenheiro implementa → Revisor valida</p>
+            </div>
+            <button
+              onClick={() => setTeamMode((v) => !v)}
+              title={teamMode ? "Usar agente único" : "Usar equipe pré-criada"}
+              className={`relative h-5 w-9 shrink-0 rounded-full transition touch-manipulation ${
+                teamMode ? "bg-emerald-600" : "bg-surface-600"
+              }`}
+            >
+              <span
+                className={`absolute top-0.5 h-4 w-4 rounded-full bg-white transition-all ${teamMode ? "left-[18px]" : "left-0.5"}`}
+              />
+            </button>
+          </div>
+        )}
         <div className="flex items-end gap-2">
           <textarea
             value={input}

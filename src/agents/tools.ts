@@ -70,6 +70,19 @@ export const TOOLS: LLMToolDef[] = [
   {
     type: "function",
     function: {
+      name: "githubListRepos",
+      description:
+        "Lista os repositórios do usuário logado no GitHub (sem clonar). Use para descobrir qual 'dono/nome' consultar ou sugerir clone.",
+      parameters: {
+        type: "object",
+        properties: {},
+        required: [],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
       name: "githubListFiles",
       description:
         "Lista a árvore de arquivos de um repositório NO GITHUB (sem clonar). Use para explorar repos remotos, branches ou PRs. Exige login no GitHub.",

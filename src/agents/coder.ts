@@ -2,7 +2,7 @@ import type { PendingChange } from "../types";
 import { readFile as readVFS, writeFile, VFS, readDir } from "../lib/fs";
 import { buildTree, refreshWorkspace } from "../lib/workspace";
 import { commitAll } from "../lib/git";
-import { githubGetTree, githubGetFile } from "../lib/githubApi";
+import { githubGetTree, githubGetFile, githubListUserRepos } from "../lib/githubApi";
 import { useAppStore } from "../store/useAppStore";
 
 function normalize(p: string): string {
@@ -134,6 +134,20 @@ export class CoderAgent {
       });
     }
     return out.length > 0 ? out.join("\n") : `Nada encontrado para "${term}"${rawPath ? ` em ${rawPath}` : ""}.`;
+  }
+
+  async githubListRepos(): Promise<string> {
+    const token = useAppStore.getState().gitToken;
+    if (!token) return "Sem login do GitHub — o acesso aos seus repositórios remotos requer login (Dashboard > Conta & Sync).";
+    try {
+      const repos = await githubListUserRepos(token, 30);
+      if (repos.length === 0) return "Nenhum repositório encontrado na sua conta.";
+      return `Seus repositórios (mais recentes):\n${repos
+        .map((r) => `📦 ${r.fullName}${r.description ? ` — ${r.description}` : ""}`)
+        .join("\n")}`;
+    } catch (e) {
+      return `Erro ao listar seus repositórios: ${e instanceof Error ? e.message : String(e)}`;
+    }
   }
 
   async githubListFiles(repoRef: string, ref?: string): Promise<string> {

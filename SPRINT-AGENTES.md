@@ -68,4 +68,21 @@ Ao terminar cada sprint, ANTES do deploy:
 ## Fora de escopo (pendências abertas)
 
 - Bug WebLLM ("baixa o modelo mas não usa") — investigar separadamente.
-- Fase 3 (futura): modelagem de `Skill`/`Agent` e equipe pré-criada no modo agente.
+
+## Sprint 4 — Skills e Agent (Fase 3, parte 1)
+
+**Objetivo:** modelar `Skill`/`Agent` no código (registry tipado) e expor `githubListRepos` (escolher repo do GitHub sem digitar URL).
+
+- [ ] `src/agents/profiles.ts` (ou registro): definições de `AgentSkill` e `AgentProfile` com referência por id.
+- [ ] Tool `githubListRepos` (usa `githubListUserRepos`) + schema em `tools.ts` + case no Orchestrator + prompt.
+- [ ] Brida nos agentes existentes para consumir o registry (sem mudar comportamento visível).
+- [ ] Revisão de código + SI. Deploy.
+
+## Sprint 5 — Equipe multi-agente pré-criada (Fase 3, parte 2)
+
+**Objetivo:** equipe fixa no modo agente: Orchestrator + Engenheiro + Revisor + PM, com fila única de diffs.
+
+- [ ] `TeamOrchestrator`: pipeline PM (plano) → Engenheiro (tenta mudanças) → Revisor (qualidade) com um LLM.
+- [ ] Seletor no ChatPanel: "Agente único" vs "Equipe pré-criada".
+- [ ] Rotular diffs com o agente proponente (Engenheiro/PM) na fila.
+- [ ] Revisão de código + SI. Deploy.
