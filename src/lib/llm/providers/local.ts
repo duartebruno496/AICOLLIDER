@@ -7,6 +7,11 @@ declare global {
   }
 }
 
+/** Modelos WebLLM (MLC) com function calling — fonte: erro oficial do WebLLM. */
+export function localModelSupportsTools(model: string): boolean {
+  return /hermes/i.test(model);
+}
+
 export class LocalWebLLMProvider implements LLMProvider {
   readonly kind = "local" as const;
   readonly vendor = "local" as const;
@@ -51,14 +56,17 @@ export class LocalWebLLMProvider implements LLMProvider {
   async chat(req: LLMRequest): Promise<LLMResponse> {
     const engine = await this.ensureEngine();
     if (!engine) throw new Error("Engine WebLLM não inicializada.");
-    const tools = req.tools?.map((t) => ({
-      type: "function",
-      function: {
-        name: t.function.name,
-        description: t.function.description,
-        parameters: t.function.parameters,
-      },
-    }));
+    const tools =
+      localModelSupportsTools(this.model) && req.tools?.length
+        ? req.tools.map((t) => ({
+            type: "function",
+            function: {
+              name: t.function.name,
+              description: t.function.description,
+              parameters: t.function.parameters,
+            },
+          }))
+        : undefined;
     const messages = normalizeLLMMessages(req.messages).map((m) => {
       if (m.role === "system") return { role: "system", content: m.content ?? "" };
       if (m.role === "assistant" && m.toolCalls?.length) {

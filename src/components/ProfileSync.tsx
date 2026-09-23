@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
 import { useAppStore } from "../store/useAppStore";
+import { localModelSupportsTools } from "../lib/llm/providers/local";
 import type { ApiKeys, RemoteVendor } from "../types";
 import { DEFAULT_MODELS } from "../types";
 import { loadProfile, saveProfile, type ProfileData } from "../lib/profile";
@@ -27,7 +28,7 @@ function mergeProfile(p: ProfileData): void {
   const s = useAppStore.getState();
   if (p.vendor && VALID_VENDORS.includes(p.vendor)) s.setVendor(p.vendor as never);
   if (p.supabaseConfig?.url) s.setSupabaseConfig(p.supabaseConfig);
-  if (p.localModel) s.setLocalModel(p.localModel);
+  if (p.localModel && localModelSupportsTools(p.localModel)) s.setLocalModel(p.localModel);
   if (typeof p.agentEnabled === "boolean") s.setAgentEnabled(p.agentEnabled);
   if (typeof p.syncApiKeys === "boolean") s.setSyncApiKeys(p.syncApiKeys);
   if (p.models) {

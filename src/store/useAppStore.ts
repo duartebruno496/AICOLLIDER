@@ -12,6 +12,7 @@ import type {
   TreeNode,
 } from "../types";
 import { DEFAULT_MODELS } from "../types";
+import { localModelSupportsTools } from "../lib/llm/providers/local";
 
 export interface SupabaseConfig {
   url: string;
@@ -135,7 +136,7 @@ export const useAppStore = create<AppState>()(
       models: initialModels,
       setModel: (vendor, model) =>
         set((s) => ({ models: { ...s.models, [vendor]: model } })),
-      localModel: "Qwen2.5-1.5B-Instruct-q4f16_1-MLC",
+      localModel: "Hermes-3-Llama-3.1-8B-q4f16_1-MLC",
       setLocalModel: (m) => set({ localModel: m }),
       agentEnabled: true,
       setAgentEnabled: (v) => set({ agentEnabled: v }),
@@ -188,12 +189,15 @@ export const useAppStore = create<AppState>()(
       name: "aicollider-settings",
       merge: (persisted, current) => {
         const p = persisted as Partial<AppState>;
-        return {
+        const merged: AppState = {
           ...current,
           ...p,
           apiKeys: { ...current.apiKeys, ...p.apiKeys },
           models: { ...current.models, ...p.models },
         };
+        // Modelos sem function calling (ex.: Qwen) quebram o Modo Agente → migra para o default com tools.
+        if (!localModelSupportsTools(merged.localModel)) merged.localModel = current.localModel;
+        return merged;
       },
       partialize: (s) => ({
         supabaseConfig: s.supabaseConfig,

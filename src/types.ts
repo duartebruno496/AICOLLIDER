@@ -17,7 +17,7 @@ export const DEFAULT_MODELS: Record<ModelVendor, string> = {
   gemini: "gemini-2.0-flash",
   openrouter: "openrouter/free",
   groq: "llama-3.3-70b-versatile",
-  local: "Qwen2.5-1.5B-Instruct-q4f16_1-MLC",
+  local: "Hermes-3-Llama-3.1-8B-q4f16_1-MLC",
 };
 
 export interface TreeNode {

@@ -5,6 +5,7 @@ import { simpleChat, providerAvailable } from "../lib/llm";
 import { Orchestrator } from "../agents/orchestrator";
 import { buildProvider } from "../lib/llm";
 import { loadChat, saveChatDebounced } from "../lib/chatDb";
+import { localModelSupportsTools } from "../lib/llm/providers/local";
 import type { RemoteVendor } from "../types";
 
 const KEY_URLS: Record<RemoteVendor, string> = {
@@ -26,7 +27,7 @@ const KEY_HINTS: Record<RemoteVendor, string> = {
 export function ChatPanel({ repo }: { repo: string | null }) {
   const {
     chat, appendChat, replaceChat, agentRunning, setAgentRunning, vendor, setVendor,
-    activeRepo, setToast, localProgress, agentEnabled, setAgentEnabled, apiKeys, setApiKey,
+    activeRepo, setToast, localProgress, agentEnabled, setAgentEnabled, apiKeys, setApiKey, localModel,
   } = useAppStore();
   const [input, setInput] = useState("");
   const [keyDraft, setKeyDraft] = useState("");
@@ -141,6 +142,12 @@ export function ChatPanel({ repo }: { repo: string | null }) {
           Modo Agente (tools no FS virtual)
         </label>
       </div>
+
+      {vendor === "local" && agentEnabled && !localModelSupportsTools(localModel) && (
+        <p className="border-b border-surface-600 bg-amber-500/10 px-3 py-1.5 text-xs text-amber-300">
+          O modelo local atual não suporta tools — o Modo Agente só poderá conversar. Escolha um <b>Hermes</b> em Configurações → Modelos ou use um provedor remoto.
+        </p>
+      )}
 
       <div ref={scrollRef} className="flex-1 space-y-2 overflow-y-auto p-3">
         {chat.length === 0 && (

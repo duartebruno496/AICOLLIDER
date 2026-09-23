@@ -6,10 +6,11 @@ import { DEFAULT_MODELS } from "../types";
 import { Modal, Button, Field, inputCls } from "./common";
 
 const LOCAL_MODELS = [
-  "Qwen2.5-1.5B-Instruct-q4f16_1-MLC",
-  "Qwen2.5-0.5B-Instruct-q4f16_1-MLC",
-  "Llama-3.2-1B-Instruct-q4f16_1-MLC",
-  "Phi-3.5-mini-instruct-q4f16_1-MLC",
+  "Hermes-3-Llama-3.1-8B-q4f16_1-MLC",
+  "Hermes-3-Llama-3.1-8B-q4f32_1-MLC",
+  "Hermes-2-Pro-Llama-3-8B-q4f16_1-MLC",
+  "Hermes-2-Pro-Llama-3-8B-q4f32_1-MLC",
+  "Hermes-2-Pro-Mistral-7B-q4f16_1-MLC",
 ];
 
 const VENDOR_LABELS: Record<RemoteVendor, string> = {
@@ -177,12 +178,13 @@ export function SettingsModal() {
             ) : (
               <Field label="Modelo WebLLM">
                 <select className={inputCls} value={localModel} onChange={(e) => setLocalModel(e.target.value)}>
-                  {LOCAL_MODELS.map((m) => (
+                  {(LOCAL_MODELS.includes(localModel) ? LOCAL_MODELS : [localModel, ...LOCAL_MODELS]).map((m) => (
                     <option key={m} value={m}>
                       {m}
                     </option>
                   ))}
                 </select>
+                <span className="mt-1 block text-xs text-slate-500">Lista restrita a modelos com function calling (Modo Agente).</span>
               </Field>
             )}
             <Field label="Endpoint usado">
