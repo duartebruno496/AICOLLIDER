@@ -1,5 +1,17 @@
 import type { LLMMessage, LLMResponse, LLMToolCall } from "./types";
 
+/** Une todas as mensagens system em UMA única, sempre na primeira posição (exigência de alguns provedores, ex. Groq). */
+function normalizeMessages(messages: LLMMessage[]): LLMMessage[] {
+  const system = messages
+    .filter((m) => m.role === "system")
+    .map((m) => m.content ?? "")
+    .filter(Boolean)
+    .join("\n");
+  const rest = messages.filter((m) => m.role !== "system");
+  if (!system) return rest;
+  return [{ role: "system", content: system }, ...rest];
+}
+
 /** Chamada genérica para APIs OpenAI-compatible (OpenAI real + WebLLM local). */
 export async function openAiCompatibleChat(params: {
   url: string;
@@ -12,7 +24,7 @@ export async function openAiCompatibleChat(params: {
 }): Promise<LLMResponse> {
   const { url, apiKey, model, messages, tools, temperature, signal } = params;
 
-  const wire = messages.map((m) => {
+  const wire = normalizeMessages(messages).map((m) => {
     if (m.role === "tool") {
       return {
         role: "tool",

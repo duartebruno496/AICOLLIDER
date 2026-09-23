@@ -47,11 +47,16 @@ export function providerAvailable(): boolean {
 
 function toLLMMessages(chat: ChatMessage[]): LLMMessage[] {
   const out: LLMMessage[] = [];
+  const system: string[] = [];
   for (const m of chat) {
-    if (m.role === "system") out.push({ role: "system", content: m.content });
+    if (m.role === "system") {
+      if (m.content) system.push(m.content);
+      continue;
+    }
     if (m.role === "user") out.push({ role: "user", content: m.content });
     if (m.role === "assistant") out.push({ role: "assistant", content: m.content });
   }
+  if (system.length) out.unshift({ role: "system", content: system.join("\n") });
   return out;
 }
 

@@ -135,8 +135,11 @@ export function LoginScreen({ onOpenSettings }: { onOpenSettings?: () => void })
                 <KeyRound className="h-4 w-4" /> Entrar agora com token GitHub
               </p>
               <p className="mb-2 text-xs text-slate-400">
-                Sem setup: crie um token em <span className="text-slate-300">GitHub → Settings → Developer settings → Tokens</span>{" "}
-                (escopo <code className="rounded bg-surface-900 px-1">repo</code>), cole abaixo e caia direto no editor.
+                Sem setup: em <span className="text-slate-300">GitHub → Settings → Developer settings → Personal access tokens</span>, clique em{" "}
+                <b className="text-slate-300">Tokens (classic)</b>, marque só <code className="rounded bg-surface-900 px-1">repo</code> e crie.
+                <span className="mt-1 block text-amber-300/90">
+                  ⚠️ Evite o "Fine-grained" — ele só enxerga os repositórios que você escolher, e a lista não apareceria.
+                </span>
               </p>
               <input
                 className="w-full rounded-xl border border-surface-600 bg-surface-900 px-3 py-3 text-sm text-slate-100 outline-none placeholder:text-slate-600 focus:border-emerald-500"

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { FolderGit2, Loader2, Download, Copy, Plus, Github, RefreshCw, Lock, Globe, FileCode2 } from "lucide-react";
+import { FolderGit2, Loader2, Download, Copy, Plus, Github, RefreshCw, Lock, Globe, FileCode2, LogOut, Search } from "lucide-react";
 import { useAppStore } from "../store/useAppStore";
 import { listTopLevelDirs } from "../lib/fs";
 import { cloneRepo, createLocalProject } from "../lib/git";
@@ -33,7 +33,7 @@ function timeAgo(iso: string): string {
 }
 
 export function ProjectWizard() {
-  const { gitToken, gitUsername, setActiveRepo, setRepositoryUrl, setTree, setSelectedPath, setContents, setToast, setStorage, setShowSyncModal } = useAppStore();
+  const { gitToken, gitUsername, setGitToken, setActiveRepo, setRepositoryUrl, setTree, setSelectedPath, setContents, setToast, setStorage, setShowSyncModal } = useAppStore();
   const [url, setUrl] = useState("");
   const [dirs, setDirs] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
@@ -43,6 +43,8 @@ export function ProjectWizard() {
   const [creating, setCreating] = useState(false);
   const [ghRepos, setGhRepos] = useState<GitHubRepo[] | null>(null);
   const [ghLoading, setGhLoading] = useState(false);
+  const [ghError, setGhError] = useState<string | null>(null);
+  const [ghQuery, setGhQuery] = useState("");
   const [ghRepoName, setGhRepoName] = useState("");
   const [ghPrivate, setGhPrivate] = useState(false);
   const [ghCreating, setGhCreating] = useState(false);
@@ -60,23 +62,35 @@ export function ProjectWizard() {
   const fetchRepos = useCallback(async () => {
     if (!gitToken) {
       setGhRepos(null);
+      setGhError(null);
       return;
     }
     setGhLoading(true);
-    setError(null);
+    setGhError(null);
     try {
-      const res = await fetch("https://api.github.com/user/repos?per_page=100&sort=updated&affiliation=owner,collaborator,organization_member", {
-        headers: { Authorization: `Bearer ${gitToken}`, Accept: "application/vnd.github+json", "User-Agent": "aicollider" },
-      });
-      if (!res.ok) {
-        setGhRepos([]);
-        throw new Error(`Erro ao buscar repositórios (HTTP ${res.status}). O token precisa do escopo 'repo'.`);
+      const all: GitHubRepo[] = [];
+      for (let page = 1; page <= 10; page++) {
+        const res = await fetch(
+          `https://api.github.com/user/repos?per_page=100&page=${page}&sort=updated&affiliation=owner,collaborator,organization_member`,
+          { headers: { Authorization: `Bearer ${gitToken}`, Accept: "application/vnd.github+json", "User-Agent": "aicollider" } }
+        );
+        if (!res.ok) {
+          if (res.status === 401 || res.status === 403) {
+            setGhError("Sessão GitHub não autorizada (token inválido/expirado ou sem o escopo 'repo'). Entre novamente com sua conta.");
+          } else {
+            setGhError(`Falha ao buscar repositórios (HTTP ${res.status}).`);
+          }
+          setGhRepos(all);
+          setGhLoading(false);
+          return;
+        }
+        const list = (await res.json()) as GitHubRepo[];
+        all.push(...list);
+        if (list.length < 100) break;
       }
-      const list = (await res.json()) as GitHubRepo[];
-      setGhRepos(list);
+      setGhRepos(all);
     } catch (e) {
-      setGhRepos([]);
-      setError(e instanceof Error ? e.message : "Falha ao buscar repositórios do GitHub.");
+      setGhError(e instanceof Error ? e.message : "Falha ao buscar repositórios do GitHub. Verifique sua conexão.");
     } finally {
       setGhLoading(false);
     }
@@ -236,38 +250,80 @@ export function ProjectWizard() {
           <div className="mb-3 flex items-center justify-between">
             <h2 className="flex items-center gap-2 text-sm font-semibold text-emerald-200">
               <Github className="h-4 w-4" /> Seus repositórios no GitHub
+              {ghRepos && ghRepos.length > 0 && (
+                <span className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-[11px] font-medium text-emerald-300">{ghRepos.length}</span>
+              )}
             </h2>
             <button onClick={() => void fetchRepos()} className="rounded p-1.5 text-slate-400 hover:bg-surface-700 hover:text-slate-100 touch-manipulation" title="Recarregar">
               <RefreshCw className={`h-4 w-4 ${ghLoading ? "animate-spin" : ""}`} />
             </button>
           </div>
+
+          {ghError && (
+            <div className="mb-3 space-y-2 rounded-xl border border-rose-500/40 bg-rose-500/10 p-3 text-sm text-rose-300">
+              <p>{ghError}</p>
+              <div className="flex flex-wrap gap-2">
+                <button onClick={() => void fetchRepos()} className="rounded-lg bg-rose-500/20 px-3 py-1.5 text-xs font-semibold text-rose-100 hover:bg-rose-500/30 touch-manipulation">
+                  Tentar novamente
+                </button>
+                <button
+                  onClick={() => setGitToken(null, null, null, null)}
+                  className="flex items-center gap-1.5 rounded-lg bg-slate-700/60 px-3 py-1.5 text-xs font-semibold text-slate-100 hover:bg-slate-700 touch-manipulation"
+                >
+                  <LogOut className="h-3.5 w-3.5" /> Trocar de conta
+                </button>
+              </div>
+            </div>
+          )}
+
           {ghLoading && !ghRepos ? (
-            <p className="flex items-center gap-2 text-sm text-slate-400">
-              <Loader2 className="h-4 w-4 animate-spin" /> Carregando repositórios...
-            </p>
-          ) : ghRepos && ghRepos.length === 0 ? (
-            <p className="text-sm text-slate-500">Nenhum repositório encontrado nesta conta.</p>
-          ) : (
-            <ul className="max-h-72 space-y-1.5 overflow-y-auto pr-1">
-              {ghRepos?.map((r) => (
-                <li key={r.id ?? r.full_name}>
-                  <button
-                    onClick={() => void handleOpenRepo(r)}
-                    disabled={busy}
-                    className="flex min-h-12 w-full items-center gap-2 rounded-xl border border-surface-600 bg-surface-900/70 px-3 py-2 text-left hover:border-emerald-500 disabled:opacity-50 touch-manipulation"
-                  >
-                    <FolderGit2 className="h-4 w-4 shrink-0 text-emerald-400" />
-                    <span className="min-w-0 flex-1">
-                      <span className="block truncate font-mono text-sm text-slate-100">
-                        {r.name} {r.private ? <Lock className="mb-0.5 inline h-3 w-3 text-amber-400" /> : <Globe className="mb-0.5 inline h-3 w-3 text-slate-500" />}
-                      </span>
-                      <span className="block truncate text-xs text-slate-500">{r.description ?? r.full_name}</span>
-                    </span>
-                    <span className="shrink-0 text-[11px] text-slate-500">{clonedDirs.has(r.name) ? "abrir" : timeAgo(r.updated_at)}</span>
-                  </button>
-                </li>
+            <div className="space-y-2">
+              {[0, 1, 2, 3].map((i) => (
+                <div key={i} className="h-12 animate-pulse rounded-xl bg-surface-800/80" />
               ))}
-            </ul>
+            </div>
+          ) : ghRepos && ghRepos.length === 0 ? (
+            !ghError && <p className="text-sm text-slate-500">Nenhum repositório encontrado nesta conta. Crie um abaixo para começar.</p>
+          ) : (
+            ghRepos && (
+              <>
+                {ghRepos.length > 8 && (
+                  <div className="mb-3">
+                    <div className="relative">
+                      <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
+                      <input
+                        className={`${inputCls} pl-9`}
+                        placeholder={`Filtrar ${ghRepos.length} repositórios...`}
+                        value={ghQuery}
+                        onChange={(e) => setGhQuery(e.target.value)}
+                      />
+                    </div>
+                  </div>
+                )}
+                <ul className="max-h-72 space-y-1.5 overflow-y-auto pr-1">
+                  {ghRepos
+                    .filter((r) => !ghQuery.trim() || `${r.name} ${r.full_name} ${r.description ?? ""}`.toLowerCase().includes(ghQuery.trim().toLowerCase()))
+                    .map((r) => (
+                      <li key={r.id ?? r.full_name}>
+                        <button
+                          onClick={() => void handleOpenRepo(r)}
+                          disabled={busy}
+                          className="flex min-h-12 w-full items-center gap-2 rounded-xl border border-surface-600 bg-surface-900/70 px-3 py-2 text-left hover:border-emerald-500 disabled:opacity-50 touch-manipulation"
+                        >
+                          <FolderGit2 className="h-4 w-4 shrink-0 text-emerald-400" />
+                          <span className="min-w-0 flex-1">
+                            <span className="block truncate font-mono text-sm text-slate-100">
+                              {r.name} {r.private ? <Lock className="mb-0.5 inline h-3 w-3 text-amber-400" /> : <Globe className="mb-0.5 inline h-3 w-3 text-slate-500" />}
+                            </span>
+                            <span className="block truncate text-xs text-slate-500">{r.description ?? r.full_name}</span>
+                          </span>
+                          <span className="shrink-0 text-[11px] text-slate-500">{clonedDirs.has(r.name) ? "abrir" : timeAgo(r.updated_at)}</span>
+                        </button>
+                      </li>
+                    ))}
+                </ul>
+              </>
+            )
           )}
         </div>
       )}
