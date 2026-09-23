@@ -15,7 +15,7 @@ export const DEFAULT_MODELS: Record<ModelVendor, string> = {
   openai: "gpt-4o-mini",
   anthropic: "claude-3-5-sonnet-latest",
   gemini: "gemini-2.0-flash",
-  openrouter: "meta-llama/llama-3.3-70b-instruct",
+  openrouter: "openrouter/free",
   groq: "llama-3.3-70b-versatile",
   local: "Qwen2.5-1.5B-Instruct-q4f16_1-MLC",
 };

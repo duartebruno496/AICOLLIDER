@@ -1,14 +1,35 @@
 import { useEffect, useRef, useState } from "react";
-import { Bot, Cpu, SendHorizonal, LogIn, Loader2 } from "lucide-react";
+import { Bot, Cpu, SendHorizonal, KeyRound, Loader2 } from "lucide-react";
 import { useAppStore, uid } from "../store/useAppStore";
 import { simpleChat, providerAvailable } from "../lib/llm";
 import { Orchestrator } from "../agents/orchestrator";
 import { buildProvider } from "../lib/llm";
 import { loadChat, saveChatDebounced } from "../lib/chatDb";
+import type { RemoteVendor } from "../types";
+
+const KEY_URLS: Record<RemoteVendor, string> = {
+  openai: "https://platform.openai.com/api-keys",
+  anthropic: "https://console.anthropic.com/settings/keys",
+  gemini: "https://aistudio.google.com/app/apikey",
+  openrouter: "https://openrouter.ai/keys",
+  groq: "https://console.groq.com/keys",
+};
+
+const KEY_HINTS: Record<RemoteVendor, string> = {
+  openai: "platform.openai.com",
+  anthropic: "console.anthropic.com",
+  gemini: "aistudio.google.com",
+  openrouter: "openrouter.ai/keys",
+  groq: "console.groq.com",
+};
 
 export function ChatPanel({ repo }: { repo: string | null }) {
-  const { chat, appendChat, replaceChat, agentRunning, setAgentRunning, vendor, setVendor, activeRepo, setToast, localProgress, agentEnabled, setAgentEnabled } = useAppStore();
+  const {
+    chat, appendChat, replaceChat, agentRunning, setAgentRunning, vendor, setVendor,
+    activeRepo, setToast, localProgress, agentEnabled, setAgentEnabled, apiKeys, setApiKey,
+  } = useAppStore();
   const [input, setInput] = useState("");
+  const [keyDraft, setKeyDraft] = useState("");
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -34,10 +55,21 @@ export function ChatPanel({ repo }: { repo: string | null }) {
   }, [chat, repo]);
 
   const canAgent = !!activeRepo && agentEnabled;
+  const available = providerAvailable();
+  const remoteVendor = vendor !== "local" ? (vendor as RemoteVendor) : null;
+  const hasKey = remoteVendor ? (apiKeys[remoteVendor] ?? "").trim().length > 0 : true;
+
+  function saveKey() {
+    const k = keyDraft.trim();
+    if (!remoteVendor || !k) return;
+    setApiKey(remoteVendor, k);
+    setKeyDraft("");
+    setToast("Chave salva. IA ativada!");
+  }
 
   async function send() {
     const text = input.trim();
-    if (!text || agentRunning) return;
+    if (!text || agentRunning || !available) return;
     setInput("");
     appendChat({ id: uid(), role: "user", content: text });
     setAgentRunning(true);
@@ -64,8 +96,6 @@ export function ChatPanel({ repo }: { repo: string | null }) {
       setAgentRunning(false);
     }
   }
-
-  const available = providerAvailable() || vendor !== "local";
 
   return (
     <aside className="flex h-full w-full flex-col border-l border-surface-600 bg-surface-900/70 md:w-96 md:shrink-0">
@@ -150,10 +180,51 @@ export function ChatPanel({ repo }: { repo: string | null }) {
       </div>
 
       <div className="border-t border-surface-600 p-3">
-        {!available && (
+        {remoteVendor && !hasKey && (
+          <div className="mb-2 space-y-2 rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-3 py-2.5">
+            <p className="flex items-center gap-1.5 text-xs font-semibold text-emerald-200">
+              <KeyRound className="h-3.5 w-3.5 shrink-0" /> Ative a IA grátis — 30 segundos, sem cartão
+            </p>
+            <p className="text-xs leading-relaxed text-emerald-300/90">
+              1. Crie uma chave gratuita em{" "}
+              <a href={KEY_URLS[remoteVendor]} target="_blank" rel="noreferrer" className="font-medium underline hover:text-emerald-100">
+                {KEY_HINTS[remoteVendor]}
+              </a>{" "}
+              · 2. Cole abaixo para ativar:
+            </p>
+            <div className="flex gap-2">
+              <input
+                type="password"
+                value={keyDraft}
+                onChange={(e) => setKeyDraft(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    saveKey();
+                  }
+                }}
+                placeholder="Cole sua chave de API"
+                className="min-w-0 flex-1 rounded-lg border border-surface-600 bg-surface-900 px-2 py-1.5 text-xs text-slate-100 outline-none placeholder:text-slate-600 focus:border-emerald-500"
+              />
+              <button
+                onClick={saveKey}
+                disabled={!keyDraft.trim()}
+                className="shrink-0 rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-500 disabled:opacity-40 touch-manipulation"
+              >
+                Ativar
+              </button>
+            </div>
+            {remoteVendor === "openrouter" && (
+              <p className="text-[11px] text-emerald-300/70">
+                O modelo padrão já usa a rota grátis (openrouter/free). Quer outra IA? Configure nas Configurações.
+              </p>
+            )}
+          </div>
+        )}
+        {!available && hasKey && (
           <p className="mb-2 flex items-start gap-1.5 rounded-lg bg-amber-500/10 px-2 py-1.5 text-xs text-amber-300">
-            <LogIn className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-            Provedor indisponível. Adicione uma chave nas Configurações ou use um navegador com WebGPU para o modelo local.
+            <Cpu className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+            WebGPU indisponível neste navegador. Use Chrome/Edge recente ou escolha um provedor remoto no seletor acima.
           </p>
         )}
         <div className="flex items-end gap-2">
@@ -172,7 +243,7 @@ export function ChatPanel({ repo }: { repo: string | null }) {
           />
           <button
             onClick={() => void send()}
-            disabled={agentRunning || !input.trim()}
+            disabled={agentRunning || !input.trim() || !available}
             className="flex min-h-12 w-12 items-center justify-center rounded-xl bg-emerald-600 text-white hover:bg-emerald-500 disabled:opacity-40 touch-manipulation"
             aria-label="Enviar"
           >

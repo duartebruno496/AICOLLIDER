@@ -127,7 +127,7 @@ export const useAppStore = create<AppState>()(
 
       supabaseConfig: { url: "", anonKey: "" },
       setSupabaseConfig: (cfg) => set({ supabaseConfig: cfg }),
-      vendor: "local",
+      vendor: "openrouter",
       setVendor: (v) => set({ vendor: v }),
       apiKeys: initialApiKeys,
       setApiKey: (vendor, key) =>
