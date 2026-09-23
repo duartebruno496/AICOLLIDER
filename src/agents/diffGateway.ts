@@ -39,3 +39,14 @@ export function settlePendingChange(ok: boolean): boolean {
   head.resolve(ok);
   return true;
 }
+
+/**
+ * Descarta TODOS os diffs pendentes (sem aplicar), resolvendo as Promises como rejeitadas.
+ * Usado ao trocar de repositório: evita que diffs de um projeto apareçam noutro.
+ */
+export function resetPendingQueue(): void {
+  if (queue.length === 0) return;
+  for (const entry of queue) entry.resolve(false);
+  queue = [];
+  sync();
+}

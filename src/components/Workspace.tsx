@@ -5,6 +5,7 @@ import { SCRATCH_REPO } from "../types";
 import { refreshWorkspace } from "../lib/workspace";
 import { detectSyncState, commitAll, createLocalProject } from "../lib/git";
 import { listTopLevelDirs, readDir, readFile, writeFile, deletePath } from "../lib/fs";
+import { resetPendingQueue } from "../agents/diffGateway";
 import { Sidebar } from "./Sidebar";
 import { EditorView } from "./EditorView";
 import { DiffViewer } from "./DiffViewer";
@@ -98,6 +99,7 @@ export function Workspace({ repo }: { repo: string }) {
   const [mobileFiles, setMobileFiles] = useState(false);
 
   useEffect(() => {
+    resetPendingQueue();
     void refreshWorkspace(repo);
     void detectSyncState(repo).then((s) => setSyncInfo({ status: s }));
     // eslint-disable-next-line react-hooks/exhaustive-deps

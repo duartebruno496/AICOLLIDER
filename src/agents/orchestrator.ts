@@ -56,6 +56,10 @@ export class Orchestrator {
     this.coder = new CoderAgent(repo);
   }
 
+  private canWrite(): boolean {
+    return (getAgent(this.agentId)?.skills ?? []).includes("write-code");
+  }
+
   private async executeTool(tc: LLMToolCall): Promise<{ result: string; wasApproval: boolean }> {
     const args = parseToolArgs(tc.arguments);
     switch (tc.name) {
@@ -89,6 +93,9 @@ export class Orchestrator {
         return { result: await this.coder.githubReadFile(repo, path, ref), wasApproval: false };
       }
       case "suggestCodeChange": {
+        if (!this.canWrite()) {
+          return { result: "FALHOU: ferramenta de escrita indisponível para este perfil (apenas o Engenheiro pode propor mudanças).", wasApproval: false };
+        }
         const path = typeof args.path === "string" ? args.path : "";
         const content = typeof args.content === "string" ? args.content : "";
         const reason = typeof args.reason === "string" ? args.reason : "solicitação do usuário";
