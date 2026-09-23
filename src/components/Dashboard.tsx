@@ -28,6 +28,8 @@ import { useAppStore } from "../store/useAppStore";
 import type { ApiKeys, RemoteVendor } from "../types";
 import { DEFAULT_MODELS, DEFAULT_AGENT_CONFIG, SCRATCH_REPO } from "../types";
 import { Field, Button, inputCls } from "./common";
+import { AutonomyPicker, AUTONOMY_HINTS } from "./AutonomyPicker";
+import { AgentsPanel } from "./AgentsPanel";
 import { signOut } from "../lib/auth";
 import { listTopLevelDirs, deletePath } from "../lib/fs";
 import { cloneRepo, createLocalProject } from "../lib/git";
@@ -645,7 +647,7 @@ function ReposTab() {
 }
 
 function AgentTab() {
-  const { agentConfig, setAgentConfig, setToast } = useAppStore();
+  const { agentConfig, setAgentConfig, setToast, activeRepo, autonomyByRepo, setAutonomy } = useAppStore();
   const [temperature, setTemperature] = useState(agentConfig.temperature);
   const [maxSteps, setMaxSteps] = useState(agentConfig.maxSteps);
 
@@ -675,10 +677,20 @@ function AgentTab() {
           <span className="mb-2 block text-sm font-medium text-slate-200">Modo único (conversa + agente)</span>
           <p className="text-xs text-slate-400">
             Não existe mais modo "Conversar" separado: você conversa com a IA no chat e, quando pede uma tarefa, ela
-            planeja e propõe mudanças (diffs) que você aprova. Ative a "Equipe pré-criada" no chat para o fluxo
-            PM → Engenheiro → Revisor.
+            planeja e propõe mudanças (diffs) que você aprova. Chame um especialista com <b>@nome</b> (ex.:{" "}
+            <b>@security</b>) — a equipe é acionada automaticamente quando necessário.
           </p>
         </div>
+
+        {activeRepo && (
+          <div className="mb-4 rounded-xl border border-surface-700 bg-surface-900/60 px-3 py-2">
+            <span className="mb-2 block min-w-0 truncate text-sm font-medium text-slate-200">
+              Autonomia em "{activeRepo}"
+            </span>
+            <AutonomyPicker repo={activeRepo} />
+            <p className="mt-1 text-xs text-slate-400">{AUTONOMY_HINTS[autonomyByRepo[activeRepo] ?? "proposed"]}</p>
+          </div>
+        )}
 
         <div className="grid gap-3 md:grid-cols-2">
           <Field label="Temperatura (criatividade/aleatoriedade)" hint="0 = determinístico · 1+ = criativo. Recomendado: 0.3">
@@ -705,17 +717,20 @@ function AgentTab() {
           </Field>
         </div>
 
-        <div className="mt-4">
-          <h4 className="mb-2 text-xs font-semibold uppercase text-slate-500">Tools disponíveis para o agente</h4>
-          <ul className="space-y-1.5">
+        <details className="mt-4 group" open>
+          <summary className="flex w-full cursor-pointer items-center justify-between py-1 text-xs font-semibold uppercase text-slate-400 touch-manipulation">
+            <span>Tools disponíveis para o agente</span>
+            <span className="text-[11px] normal-case">{""}</span>
+          </summary>
+          <ul className="mt-2 space-y-1.5">
             {TOOLS.map((t) => (
               <li key={t.function.name} className="rounded-lg border border-surface-600 bg-surface-900/60 px-3 py-2">
                 <p className="font-mono text-xs text-sky-300">{t.function.name}</p>
-                <p className="text-xs text-slate-500">{t.function.description}</p>
+                <p className="text-xs text-slate-400">{t.function.description}</p>
               </li>
             ))}
           </ul>
-        </div>
+        </details>
 
         <p className="mt-4 flex items-start gap-1.5 text-xs text-amber-300">
           <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
@@ -726,6 +741,8 @@ function AgentTab() {
           Salvar parâmetros do agente
         </Button>
       </section>
+
+      <AgentsPanel />
     </>
   );
 }

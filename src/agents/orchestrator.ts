@@ -6,7 +6,9 @@ import { TOOLS } from "./tools";
 import { CoderAgent } from "./coder";
 import { ReviewerAgent } from "./reviewer";
 import { waitForApproval } from "./diffGateway";
-import { getAgent, toolsForSkills } from "./registry";
+import { getAgent, toolsForSkills, autonomyRule } from "./registry";
+import { buildSkillsSection } from "../lib/skills";
+import { hybridRetrieveSkills } from "../lib/embeddings";
 
 const BASE_PROMPT = `Você é o AICOLLIDER, um assistente de Vibe Coding que trabalha DENTRO do repositório virtual do usuário.
 
@@ -23,11 +25,12 @@ FLUXO DE TRABALHO:
 - Ao criar arquivos use sempre o conteúdo COMPLETO do arquivo.
 - Responda de forma objetiva em português.`;
 
-function buildSystemPrompt(agentId: string): string {
+function buildSystemPrompt(agentId: string, autonomy?: string): string {
   const profile = getAgent(agentId);
   const skills = (profile?.skills ?? []).map((id) => `• ${id}`).join("\n");
   return `${BASE_PROMPT}\n\nVocê está atuando como ${profile?.name ?? agentId} (${profile?.role ?? ""}).
 ${profile?.rolePrompt ?? ""}
+${autonomy ? `\n${autonomy}` : ""}
 
 Skills ativas:
 ${skills}`;
@@ -50,10 +53,15 @@ export class Orchestrator {
 
   constructor(
     private provider: LLMProvider,
-    repo: string,
+    private repo: string,
     private agentId = "engineer"
   ) {
     this.coder = new CoderAgent(repo);
+  }
+
+  /** Nível de autonomia configurado para este repositório (Fase 1). */
+  private getAutonomy() {
+    return useAppStore.getState().autonomyByRepo[this.repo];
   }
 
   private canWrite(): boolean {
@@ -123,9 +131,13 @@ export class Orchestrator {
     }
   }
 
-  private toLLM(chat: ChatMessage[]): LLMMessage[] {
+  private toLLM(chat: ChatMessage[], skillsSection: string): LLMMessage[] {
+    const autonomy = (getAgent(this.agentId)?.skills ?? []).includes("write-code") ? autonomyRule(this.getAutonomy()) : undefined;
     const out: LLMMessage[] = [
-      { role: "system", content: `${buildSystemPrompt(this.agentId)}\n\nRepositório aberto: ${this.coder["repo"]}` },
+      {
+        role: "system",
+        content: `${buildSystemPrompt(this.agentId, autonomy)}${skillsSection}\n\nRepositório aberto: ${this.repo}`,
+      },
     ];
     for (const m of chat) {
       if (m.role === "user") out.push({ role: "user", content: m.content });
@@ -143,7 +155,10 @@ export class Orchestrator {
     const temperature = Number.isFinite(cfg?.temperature) ? cfg.temperature : 0.3;
     const defaultSteps = Number.isFinite(cfg?.maxSteps) ? Math.min(40, Math.max(1, Math.round(cfg.maxSteps))) : 14;
     const maxSteps = maxStepsOverride !== undefined ? Math.min(40, Math.max(1, Math.round(maxStepsOverride))) : defaultSteps;
-    const messages = this.toLLM(chat);
+    const lastUser = [...chat].reverse().find((m) => m.role === "user")?.content ?? "";
+    const retrievedIds = await hybridRetrieveSkills(lastUser, 3);
+    const skillsSection = buildSkillsSection(this.agentId, retrievedIds);
+    const messages = this.toLLM(chat, skillsSection);
     let appliedChanges = 0;
     let finalText = "";
 

@@ -6,7 +6,7 @@ import { githubGetTree, githubGetFile, githubListUserRepos } from "../lib/github
 import { useAppStore } from "../store/useAppStore";
 
 function normalize(p: string): string {
-  let path = p.replace(/^\/+/, "");
+  let path = p.replace(/^\/*/, "").replace(/\\/g, "/").replace(/^\/+/, "");
   const parts = path.split("/").filter((s) => s && s !== "." && s !== "..");
   return parts.join("/");
 }

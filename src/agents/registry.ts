@@ -4,6 +4,9 @@
  * Um agente é composto por um conjunto de skills + prompt de papel.
  */
 
+import type { AutonomyLevel } from "../types";
+import { useAppStore } from "../store/useAppStore";
+
 export interface AgentSkill {
   id: string;
   name: string;
@@ -69,11 +72,28 @@ export const SKILLS: Record<string, AgentSkill> = {
   "deploy-rules": DEPLOY_RULES,
 };
 
+/**
+ * Skills efetivas: built-in + custom do usuário (custom sobrescreve por id).
+ * Acesso via store em tempo real para refletir edições feitas na Configuração.
+ */
+export function getSkills(): Record<string, AgentSkill> {
+  const merged: Record<string, AgentSkill> = { ...SKILLS };
+  for (const s of useAppStore.getState().customSkills) {
+    if (s && s.id) merged[s.id] = s;
+  }
+  return merged;
+}
+
+export function getSkill(id: string): AgentSkill | undefined {
+  return getSkills()[id];
+}
+
 /** Tools liberadas por uma lista de skills (com dedupe e ordem estável). */
 export function toolsForSkills(skillIds: string[]): string[] {
+  const skills = getSkills();
   const out: string[] = [];
   for (const id of skillIds) {
-    for (const t of SKILLS[id]?.allowedTools ?? []) {
+    for (const t of skills[id]?.allowedTools ?? []) {
       if (!out.includes(t)) out.push(t);
     }
   }
@@ -116,8 +136,64 @@ export const AGENTS: AgentProfile[] = [
     rolePrompt:
       "Você é o Revisor de qualidade. Examine o que foi implementado (use tools de leitura), verifique segurança (nada de segredos/SSH/terminal), correção e clareza. Emita veredito final: APROVADO, ou APROVADO com ajustes / REJEITADO com motivos objetivos.",
   },
+  {
+    id: "uiux",
+    name: "UI/UX",
+    role: "interface e experiência",
+    emoji: "🎨",
+    description: "Especialista em interface visual, layout, CSS e experiência do usuário.",
+    skills: ["read-repo", "read-github", "write-code", "deploy-rules"],
+    rolePrompt:
+      "Você é o especialista UI/UX. Foque EXCLUSIVAMENTE em interface, visual, layout, CSS, responsividade, acessibilidade e experiência do usuário. Ignore lógica de negócio/servidor salvo quando o código visual depender dela. Se a tarefa for de outra área, recomende outro agente. Comece com um plano curto, leia o código relevante e proponha mudanças visuais com suggestCodeChange.",
+  },
+  {
+    id: "security",
+    name: "Segurança",
+    role: "segurança da informação",
+    emoji: "🛡️",
+    description: "Audita e corrige vulnerabilidades: tokens, injeção, XSS, permissões.",
+    skills: ["read-repo", "read-github", "write-code"],
+    rolePrompt:
+      "Você é o especialista em Segurança da Informação. Audite o projeto procurando vulnerabilidades: exposição de tokens/segredos, injeção (SQL/HTML/script), XSS, SSRF, caminhos arbitrários, permissões excessivas e dependências críticas. Use as tools de leitura para confirmar e proponha correções com suggestCodeChange. Sempre explique o risco de cada achado. Responda em português.",
+  },
+  {
+    id: "fullstack",
+    name: "Fullstack",
+    role: "todas as áreas",
+    emoji: "⚙️",
+    description: "Trabalha em qualquer camada: front, back, dados, infra, testes.",
+    skills: ["read-repo", "read-github", "write-code", "deploy-rules"],
+    rolePrompt:
+      "Você é o engenheiro Fullstack. Pode atuar em qualquer camada do projeto (front-end, back-end, dados, infra, testes e docs). Comece com um plano curto, leia o código relevante e proponha mudanças com suggestCodeChange. Responda de forma objetiva em português.",
+  },
 ];
 
 export function getAgent(id: string): AgentProfile | undefined {
-  return AGENTS.find((a) => a.id === id);
+  const custom = useAppStore.getState().customAgents.find((a) => a.id === id);
+  return custom ?? AGENTS.find((a) => a.id === id);
+}
+
+/** Ids dos agentes built-in (para a UI mostrar o que é custom). */
+export const BUILTIN_AGENT_IDS: string[] = AGENTS.map((a) => a.id);
+export const BUILTIN_SKILL_IDS: string[] = Object.keys(SKILLS);
+
+/** Lista efetiva de agentes: built-in + custom do usuário. */
+export function getAgents(): AgentProfile[] {
+  const custom = useAppStore.getState().customAgents;
+  const byId = new Map<string, AgentProfile>();
+  for (const a of AGENTS) byId.set(a.id, a);
+  for (const a of custom) if (a && a.id) byId.set(a.id, a);
+  return [...byId.values()];
+}
+
+/** Regra de autonomia que entra no system prompt do agente executante (Engenheiro). */
+export function autonomyRule(level: AutonomyLevel | undefined): string {
+  switch (level ?? "proposed") {
+    case "guided":
+      return "AUTONOMIA (guided): você só executa mudanças quando o USUÁRIO pedir explicitamente (ex.: 'faça', 'crie', 'altere'). Em qualquer outra mensagem, apenas converse e responda — não proponha diffs por conta própria.";
+    case "full":
+      return "AUTONOMIA (full): ao detectar uma tarefa, você pode ir direto para a execução propondo mudanças com suggestCodeChange (o humano aprova no diff). Para conversas casuais sem pedido de edição, apenas responda.";
+    default:
+      return "AUTONOMIA (proposed): ao detectar uma tarefa, primeiro apresente um PLANO curto e AGUARDE o usuário aprovar o plano antes de executar com suggestCodeChange. Para conversas casuais sem pedido de edição, apenas responda.";
+  }
 }

@@ -3,6 +3,7 @@ import { uid } from "../store/useAppStore";
 import type { LLMProvider } from "../lib/llm/types";
 import { Orchestrator, type OrchestratorRunResult } from "./orchestrator";
 import { useAppStore } from "../store/useAppStore";
+import { getAgent } from "./registry";
 
 /**
  * Equipe pré-criada: PM planeja → Engenheiro executa → Revisor valida.
@@ -25,7 +26,9 @@ function extractPlan(finalText: string): { isTask: boolean; plan: string } {
 export class TeamOrchestrator {
   constructor(
     private provider: LLMProvider,
-    private repo: string
+    private repo: string,
+    /** Perfil usado na fase de execução (default: engenheiro). Ex.: "security", "uiux". */
+    private focusAgent = "engineer"
   ) {}
 
   async run(chat: ChatMessage[]): Promise<OrchestratorRunResult> {
@@ -49,12 +52,32 @@ export class TeamOrchestrator {
       return { finalText: planResult.finalText, appliedChanges: 0 };
     }
 
-    // Fase 2 — Engenheiro: executa APENAS o plano (não o histórico do chat).
+    // Fase 2 — Agente focado (default: engenheiro): executa APENAS o plano (não o histórico do chat).
+    // Se o perfil focado não pode escrever (ex.: @security, @pm, @review), entrega como relatório
+    // do especialista em vez de tentar editar sem a skill.
+    const focus = getAgent(this.focusAgent);
+    const focusCanWrite = !!focus?.skills.includes("write-code");
     const execChat: ChatMessage[] = [
       { id: uid(), role: "user", content: `Execute exatamente o plano abaixo, propondo as mudanças necessárias com sugestão de diff.` },
       { id: uid(), role: "assistant", content: `[Plano do PM]\n${plan}` },
     ];
-    const engineer = new Orchestrator(this.provider, this.repo, "engineer");
+
+    if (!focusCanWrite) {
+      const specialist = new Orchestrator(this.provider, this.repo, this.focusAgent);
+      const verdict = await specialist.run(
+        [
+          ...execChat,
+          { id: uid(), role: "assistant", content: `[Análise do especialista]\n${plan}\n\nApresente sua análise e recomendações (não deve editar arquivos).` },
+        ],
+        phaseSteps
+      );
+      return {
+        finalText: `🧭 **Plano (PM):**\n${plan}\n\n🛡️ **Análise especialista (@${this.focusAgent}):**\n${verdict.finalText}`,
+        appliedChanges: 0,
+      };
+    }
+
+    const engineer = new Orchestrator(this.provider, this.repo, this.focusAgent);
     const exec = await engineer.run(execChat, phaseSteps);
 
     // Fase 3 — Revisor: veredito de qualidade/segurança (sem editar).

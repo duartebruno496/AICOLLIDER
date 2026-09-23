@@ -28,6 +28,12 @@ export interface AgentConfig {
 /** Modo de envio da mensagem no chat: conversa normal (sem tools) ou agente (manipula o FS virtual). */
 export type ChatMode = "chat" | "agent";
 
+/** Nível de autonomia do agente, escolhido por repositório. */
+export type AutonomyLevel = "guided" | "proposed" | "full";
+
+/** Autonomia padrão ao abrir um projeto pela primeira vez. */
+export const DEFAULT_AUTONOMY: AutonomyLevel = "proposed";
+
 /** Repositório interno de rascunho usado pelo "Editor sem projeto" (oculto das listas). */
 export const SCRATCH_REPO = "_scratch";
 

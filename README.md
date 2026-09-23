@@ -39,6 +39,21 @@ npm run preview
 | 5 | Tools JSON Schema (`listFiles`, `readFile`, `suggestCodeChange`), `Orchestrator`, `CoderAgent`, `ReviewerAgent`, aprovação humana com Promise no DiffViewer |
 | 6 | Rollback (`git reset --hard HEAD~1`), guardrails de deploy (Só `.github/workflows/`, proibido SSH/FTP), polimento touch/PWA + ícones |
 
+## Modo Agente (conversa + execução, estilo opencode)
+
+Com um repositório aberto, o chat entende quando você só quer **conversar** e quando você quer uma **tarefa** — sem alternar modos:
+
+- **Autonomia por repositório** (seletor no chat e no Dashboard):
+  - `Guided` — o agente só executa com comando explícito ("faça X").
+  - `Proposed` (padrão) — detecta a tarefa, apresenta o plano e espera seu OK antes de executar.
+  - `Full` — detecta a tarefa e já parte para executar (você aprova cada diff).
+- **Especialistas `@`**: `@security`, `@ui/ux`, `@pm`, `@review`, `@fullstack` (e qualquer agente custom). A equipe (PM → executante → Revisor) é acionada pelo roteador quando a tarefa exige múltiplas áreas — sem botão.
+- **Comandos**: `/exec` (força execução mesmo em Guided) · `/plano` (mostra plano antes de executar mesmo em Full) · `/conversa` (só conversa, sem tools). Ajuda embutida no chat.
+- **RAG de skills**: cada tarefa carrega só as skills relevantes no context (por termos, grátis). Com chave OpenAI configurada, usa embeddings reais no retrieval, com cache local.
+- **Configuração aberta**: em Dashboard → Agentes você lista, edita, cria, exclui e exporta/importa agentes e skills (JSON persisted na IndexedDB). Agentes são dados locais — nunca executados como código.
+
+> Toda mudança de arquivo passa por uma aprovação humana (`Aceitar`/`Rejeitar` no diff) — a IA **nunca grava direto**.
+
 ## Arquitetura principal
 
 ```
@@ -48,7 +63,7 @@ src/
   lib/workspace.ts     Árvore de arquivos + medição de armazenamento
   lib/llm/             Providers (openai/anthropic/gemini/local-webllm) + factory
   lib/auth.ts          Sessão Supabase + captura do provider_token
-  agents/              tools.ts · CoderAgent · ReviewerAgent · Orchestrator · diffGateway
+  agents/              tools.ts · CoderAgent · ReviewerAgent · Orchestrator · TeamOrchestrator · router.ts (conversa/tarefa/equipe) · registry (perfis+skills) · diffGateway
   store/useAppStore.ts Estado global (Zustand + persist para chaves/config)
 ```
 

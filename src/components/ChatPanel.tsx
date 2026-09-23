@@ -1,9 +1,11 @@
 import { useEffect, useRef, useState } from "react";
 import { Bot, Cpu, SendHorizonal, KeyRound, Loader2, MessageSquare, Wrench } from "lucide-react";
-import { useAppStore, uid } from "../store/useAppStore";
+import { useAppStore, uid, autonomyOf } from "../store/useAppStore";
+import { AutonomyPicker, AUTONOMY_HINTS } from "./AutonomyPicker";
 import { simpleChat, providerAvailable } from "../lib/llm";
 import { Orchestrator } from "../agents/orchestrator";
 import { TeamOrchestrator } from "../agents/team";
+import { routeMessage, HELPS } from "../agents/router";
 import { buildProvider } from "../lib/llm";
 import { loadChat, saveChatDebounced } from "../lib/chatDb";
 import { localModelSupportsTools } from "../lib/llm/providers/local";
@@ -32,7 +34,6 @@ export function ChatPanel({ repo }: { repo: string | null }) {
   } = useAppStore();
   const [input, setInput] = useState("");
   const [keyDraft, setKeyDraft] = useState("");
-  const [teamMode, setTeamMode] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -79,17 +80,33 @@ export function ChatPanel({ repo }: { repo: string | null }) {
     try {
       if (activeRepo && repo) {
         const provider = buildProvider();
-        const ctx = chat.concat([{ id: uid(), role: "user", content: text }]);
-        if (teamMode) {
-          const team = new TeamOrchestrator(provider, repo);
-          const { finalText, appliedChanges } = await team.run(ctx);
+        const route = routeMessage(text, autonomyOf(repo), true);
+        const ctx = chat.concat([{ id: uid(), role: "user", content: route.text }]);
+        let finalText: string;
+        let appliedChanges = 0;
+        if (route.kind === "task") {
+          if (route.useTeam) {
+            const team = new TeamOrchestrator(provider, repo, route.agentId);
+            const r = await team.run(ctx);
+            finalText = r.finalText;
+            appliedChanges = r.appliedChanges;
+          } else {
+            const orch = new Orchestrator(provider, repo, route.agentId);
+            const r = await orch.run(ctx);
+            finalText = r.finalText;
+            appliedChanges = r.appliedChanges;
+          }
           appendChat({ id: uid(), role: "assistant", content: finalText });
           if (appliedChanges > 0) setToast(`${appliedChanges} alteração(ões) aprovada(s) e commitada(s).`);
         } else {
-          const orch = new Orchestrator(provider, repo);
-          const { finalText, appliedChanges } = await orch.run(ctx);
-          appendChat({ id: uid(), role: "assistant", content: finalText });
-          if (appliedChanges > 0) setToast(`${appliedChanges} alteração(ões) aprovada(s) e commitada(s).`);
+          const sysCtx = `Repositório virtual aberto: ${repo}. Você está em CONVERSA (sem tools): responda com base no contexto, NÃO invente conteúdo de arquivos nem proponha mudanças — o usuário pode pedir uma tarefa a qualquer momento.`;
+          const history: ChatMessage[] = [
+            { id: uid(), role: "system", content: sysCtx },
+            ...chat,
+            { id: uid(), role: "user", content: route.text },
+          ];
+          const { assistant } = await simpleChat(history);
+          appendChat({ id: uid(), role: "assistant", content: assistant });
         }
       } else {
         const sysCtx = repo
@@ -172,21 +189,24 @@ export function ChatPanel({ repo }: { repo: string | null }) {
           </div>
         )}
         {chat.length === 0 && (
-          <p className="rounded-xl border border-dashed border-surface-600 p-4 text-center text-xs text-slate-500">
+          <div className="rounded-xl border border-dashed border-surface-600 p-4 text-center text-xs text-slate-400">
             {canAgent ? (
               <>
-                Converse ou peça uma tarefa, por exemplo:
-                <br />
-                <em className="text-slate-400">"Crie um arquivo readme.md com um título"</em>
-                <br />
-                Para tarefas, a IA planeja, propõe o diff e aguarda o seu clique para salvar.
+                <p className="mb-2">
+                  Converse ou peça uma tarefa, por exemplo:{" "}
+                  <em className="text-slate-300">"Crie um arquivo readme.md com um título"</em>
+                </p>
+                <div className="flex flex-wrap items-center justify-center gap-1.5">
+                  {["@security", "@ui/ux", "@pm", "@review", "/exec", "/plano", "/conversa"].map((c) => (
+                    <code key={c} className="rounded bg-surface-800 px-1.5 py-0.5 font-mono text-[11px] text-emerald-300">{c}</code>
+                  ))}
+                </div>
+                <p className="mt-2 text-[11px] text-slate-500">Cada mudança de arquivo só é salva depois do seu clique (Aceitar) no diff.</p>
               </>
             ) : (
-              <>
-                Converse normalmente. Abra um repositório (ou use o rascunho) para a IA também planejar e editar.
-              </>
+              <p>Converse normalmente. Abra um repositório (ou use o rascunho) para a IA também planejar e editar.</p>
             )}
-          </p>
+          </div>
         )}
         {chat.map((m) => (
           <div key={m.id} className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}>
@@ -258,26 +278,28 @@ export function ChatPanel({ repo }: { repo: string | null }) {
             WebGPU indisponível neste navegador. Use Chrome/Edge recente ou escolha um provedor remoto no seletor acima.
           </p>
         )}
-        <div className="mb-2 flex items-center gap-1 rounded-xl border border-surface-600 bg-surface-800 p-1">
-          <span className="flex-1 px-2 text-xs text-slate-400">Modo único: conversa + planejamento + execução</span>
-        </div>
         {activeRepo && (
-          <div className="mb-2 flex items-center justify-between gap-2 rounded-xl border border-surface-700 bg-surface-900/60 px-3 py-2">
-            <div className="min-w-0">
-              <p className="text-xs font-semibold text-slate-200">Equipe pré-criada</p>
-              <p className="truncate text-[11px] text-slate-500">PM planeja → Engenheiro implementa → Revisor valida</p>
+          <details className="group mb-2 rounded-xl border border-surface-700 bg-surface-900/60 px-3 py-2">
+            <summary className="cursor-pointer select-none py-1 text-xs font-semibold text-slate-300">
+              Comandos e especialistas
+            </summary>
+            <div className="mt-2 grid max-h-44 grid-cols-1 gap-1.5 overflow-y-auto sm:grid-cols-2">
+              {HELPS.map((h) => (
+                <span key={h.command} className="flex items-start gap-1.5 text-[11px] text-slate-400">
+                  <code className="rounded bg-surface-800 px-1.5 py-0.5 font-mono text-[11px] text-emerald-300">{h.command}</code>{" "}
+                  <span>{h.desc}</span>
+                </span>
+              ))}
             </div>
-            <button
-              onClick={() => setTeamMode((v) => !v)}
-              title={teamMode ? "Usar agente único" : "Usar equipe pré-criada"}
-              className={`relative h-5 w-9 shrink-0 rounded-full transition touch-manipulation ${
-                teamMode ? "bg-emerald-600" : "bg-surface-600"
-              }`}
-            >
-              <span
-                className={`absolute top-0.5 h-4 w-4 rounded-full bg-white transition-all ${teamMode ? "left-[18px]" : "left-0.5"}`}
-              />
-            </button>
+          </details>
+        )}
+        {activeRepo && (
+          <div className="mb-2 rounded-xl border border-surface-700 bg-surface-900/60 px-3 py-2">
+            <div className="flex items-center justify-between gap-2">
+              <p className="min-w-0 text-xs font-semibold text-slate-200">Autonomia do agente</p>
+            </div>
+            <AutonomyPicker repo={activeRepo} />
+            <p className="mt-1 text-[11px] text-slate-400">{AUTONOMY_HINTS[autonomyOf(activeRepo)]}</p>
           </div>
         )}
         <div className="flex items-end gap-2">

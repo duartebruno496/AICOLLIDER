@@ -3,6 +3,7 @@ import { persist } from "zustand/middleware";
 import type {
   AgentConfig,
   ApiKeys,
+  AutonomyLevel,
   ChatMessage,
   ChatMode,
   LocalProgress,
@@ -13,7 +14,8 @@ import type {
   SyncInfo,
   TreeNode,
 } from "../types";
-import { DEFAULT_AGENT_CONFIG, DEFAULT_MODELS } from "../types";
+import type { AgentProfile, AgentSkill } from "../agents/registry";
+import { DEFAULT_AGENT_CONFIG, DEFAULT_AUTONOMY, DEFAULT_MODELS } from "../types";
 import { localModelSupportsTools } from "../lib/llm/providers/local";
 
 export interface SupabaseConfig {
@@ -45,6 +47,18 @@ export interface AppState {
   setChatMode: (v: ChatMode) => void;
   agentConfig: AgentConfig;
   setAgentConfig: (v: AgentConfig) => void;
+  /** Agentes do usuário (Fase 4): estendem/sobrescrevem os built-in. */
+  customAgents: AgentProfile[];
+  setCustomAgents: (list: AgentProfile[]) => void;
+  /** Skills do usuário (Fase 4). */
+  customSkills: AgentSkill[];
+  setCustomSkills: (list: AgentSkill[]) => void;
+  /** Nível de autonomia do agente por repositório (chave = nome do repo). */
+  autonomyByRepo: Record<string, AutonomyLevel>;
+  setAutonomy: (repo: string, level: AutonomyLevel) => void;
+  /** Cache local dos vetores de embedding das skills (só quando chave paga configurada). */
+  skillVectors: Record<string, number[]>;
+  setSkillVector: (id: string, vec: number[] | null) => void;
   syncApiKeys: boolean;
   setSyncApiKeys: (v: boolean) => void;
   profileLastSync: string | null;
@@ -147,6 +161,21 @@ export const useAppStore = create<AppState>()(
       setChatMode: (v) => set({ chatMode: v }),
       agentConfig: DEFAULT_AGENT_CONFIG,
       setAgentConfig: (v) => set({ agentConfig: v }),
+      customAgents: [],
+      setCustomAgents: (list) => set({ customAgents: list }),
+      customSkills: [],
+      setCustomSkills: (list) => set({ customSkills: list }),
+      autonomyByRepo: {},
+      setAutonomy: (repo, level) =>
+        set((s) => ({ autonomyByRepo: { ...s.autonomyByRepo, [repo]: level } })),
+      skillVectors: {},
+      setSkillVector: (id, vec) =>
+        set((s) => {
+          const skillVectors = { ...s.skillVectors };
+          if (vec) skillVectors[id] = vec;
+          else delete skillVectors[id];
+          return { skillVectors };
+        }),
       syncApiKeys: false,
       setSyncApiKeys: (v) => set({ syncApiKeys: v }),
       profileLastSync: null,
@@ -225,6 +254,10 @@ export const useAppStore = create<AppState>()(
         localModel: s.localModel,
         chatMode: s.chatMode,
         agentConfig: s.agentConfig,
+        autonomyByRepo: s.autonomyByRepo,
+        skillVectors: s.skillVectors,
+        customAgents: s.customAgents,
+        customSkills: s.customSkills,
         syncApiKeys: s.syncApiKeys,
         activeRepo: s.activeRepo,
         repositoryUrl: s.repositoryUrl,
@@ -235,3 +268,9 @@ export const useAppStore = create<AppState>()(
 );
 
 export const uid = () => Math.random().toString(36).slice(2) + Date.now().toString(36);
+
+/** Nível de autonomia efetivo de um repo (default proposto). */
+export function autonomyOf(repo: string | null | undefined): AutonomyLevel {
+  if (!repo) return DEFAULT_AUTONOMY;
+  return useAppStore.getState().autonomyByRepo[repo] ?? DEFAULT_AUTONOMY;
+}
