@@ -35,7 +35,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh release create portable aicollider-portable.zip --clobber \
+          gh release create portable \
             --title "AICOLLIDER Portable" \
             --notes "Versão portátil (base ./) — abra index.html direto do disco ou sirva estático. Descompacte e use Google Chrome/Edge." \
             --target main 2>/dev/null || true
