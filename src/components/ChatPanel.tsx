@@ -223,7 +223,8 @@ export function ChatPanel({ repo }: { repo: string | null }) {
             </div>
             {remoteVendor === "openrouter" && (
               <p className="text-[11px] text-emerald-300/70">
-                O modelo padrão já usa a rota grátis (openrouter/free). Quer outra IA? Configure nas Configurações.
+                O modelo padrão já usa a rota grátis (deepseek-chat-v3.1:free) — grátis e com agentes. Outras IAs e ajustes
+                ficam no Dashboard de controle.
               </p>
             )}
           </div>

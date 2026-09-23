@@ -1,4 +1,4 @@
-import type { RemoteVendor } from "../types";
+import type { AgentConfig, RemoteVendor } from "../types";
 
 export const PROFILE_REPO = "aicollider-profile";
 export const PROFILE_FILE = "profile.json";
@@ -11,6 +11,7 @@ export interface ProfileData {
   models: Partial<Record<RemoteVendor, string>>;
   localModel: string;
   agentEnabled: boolean;
+  agentConfig?: AgentConfig;
   syncApiKeys: boolean;
   activeRepo: string | null;
   repositoryUrl: string | null;

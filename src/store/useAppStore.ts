@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import type {
+  AgentConfig,
   ApiKeys,
   ChatMessage,
   LocalProgress,
@@ -11,7 +12,7 @@ import type {
   SyncInfo,
   TreeNode,
 } from "../types";
-import { DEFAULT_MODELS } from "../types";
+import { DEFAULT_AGENT_CONFIG, DEFAULT_MODELS } from "../types";
 import { localModelSupportsTools } from "../lib/llm/providers/local";
 
 export interface SupabaseConfig {
@@ -40,6 +41,8 @@ export interface AppState {
   setLocalModel: (m: string) => void;
   agentEnabled: boolean;
   setAgentEnabled: (v: boolean) => void;
+  agentConfig: AgentConfig;
+  setAgentConfig: (v: AgentConfig) => void;
   syncApiKeys: boolean;
   setSyncApiKeys: (v: boolean) => void;
   profileLastSync: string | null;
@@ -81,8 +84,8 @@ export interface AppState {
   // ---- UI ----
   showStoragePanel: boolean;
   setShowStoragePanel: (v: boolean) => void;
-  showSettings: boolean;
-  setShowSettings: (v: boolean) => void;
+  showDashboard: boolean;
+  setShowDashboard: (v: boolean) => void;
   showSyncModal: boolean;
   setShowSyncModal: (v: boolean) => void;
   toast: string | null;
@@ -140,6 +143,8 @@ export const useAppStore = create<AppState>()(
       setLocalModel: (m) => set({ localModel: m }),
       agentEnabled: true,
       setAgentEnabled: (v) => set({ agentEnabled: v }),
+      agentConfig: DEFAULT_AGENT_CONFIG,
+      setAgentConfig: (v) => set({ agentConfig: v }),
       syncApiKeys: false,
       setSyncApiKeys: (v) => set({ syncApiKeys: v }),
       profileLastSync: null,
@@ -178,8 +183,8 @@ export const useAppStore = create<AppState>()(
 
       showStoragePanel: false,
       setShowStoragePanel: (v) => set({ showStoragePanel: v }),
-      showSettings: false,
-      setShowSettings: (v) => set({ showSettings: v }),
+      showDashboard: false,
+      setShowDashboard: (v) => set({ showDashboard: v }),
       showSyncModal: false,
       setShowSyncModal: (v) => set({ showSyncModal: v }),
       toast: null,
@@ -197,6 +202,14 @@ export const useAppStore = create<AppState>()(
         };
         // Modelos sem function calling (ex.: Qwen) quebram o Modo Agente → migra para o default com tools.
         if (!localModelSupportsTools(merged.localModel)) merged.localModel = current.localModel;
+        // Config de agente com defaults sanos (protege contra NaN/abuso no profile persistido).
+        const pcfg = p.agentConfig as Partial<AgentConfig> | undefined;
+        if (pcfg) {
+          merged.agentConfig = {
+            temperature: typeof pcfg.temperature === "number" && Number.isFinite(pcfg.temperature) ? Math.min(2, Math.max(0, pcfg.temperature)) : DEFAULT_AGENT_CONFIG.temperature,
+            maxSteps: typeof pcfg.maxSteps === "number" && Number.isFinite(pcfg.maxSteps) ? Math.min(40, Math.max(1, Math.round(pcfg.maxSteps))) : DEFAULT_AGENT_CONFIG.maxSteps,
+          };
+        }
         return merged;
       },
       partialize: (s) => ({
@@ -206,6 +219,7 @@ export const useAppStore = create<AppState>()(
         models: s.models,
         localModel: s.localModel,
         agentEnabled: s.agentEnabled,
+        agentConfig: s.agentConfig,
         syncApiKeys: s.syncApiKeys,
         activeRepo: s.activeRepo,
         repositoryUrl: s.repositoryUrl,

@@ -9,7 +9,7 @@ import { LandingPage } from "./components/LandingPage";
 import { LoginScreen } from "./components/LoginScreen";
 import { ProjectWizard } from "./components/ProjectWizard";
 import { Workspace } from "./components/Workspace";
-import { SettingsModal } from "./components/SettingsModal";
+import { Dashboard } from "./components/Dashboard";
 import { ProfileSync } from "./components/ProfileSync";
 
 /** Limpa service workers antigos (causa comum de tela em branco no dev). */
@@ -28,7 +28,8 @@ export default function App() {
   const supabaseConfig = useAppStore((s) => s.supabaseConfig);
   const gitToken = useAppStore((s) => s.gitToken);
   const activeRepo = useAppStore((s) => s.activeRepo);
-  const setShowSettings = useAppStore((s) => s.setShowSettings);
+  const showDashboard = useAppStore((s) => s.showDashboard);
+  const setShowDashboard = useAppStore((s) => s.setShowDashboard);
   const [started, setStarted] = useState(false);
 
   useEffect(() => {
@@ -56,10 +57,11 @@ export default function App() {
   // Login obrigatório: sem GitHub, nada além da Landing/Login.
   if (!gitToken) {
     return started ? (
-      <>
-        <LoginScreen onOpenSettings={() => setShowSettings(true)} />
-        <SettingsModal />
-      </>
+      showDashboard ? (
+        <Dashboard />
+      ) : (
+        <LoginScreen onOpenSettings={() => setShowDashboard(true)} />
+      )
     ) : (
       <LandingPage onEnter={() => setStarted(true)} />
     );
@@ -68,8 +70,7 @@ export default function App() {
   return (
     <>
       <ProfileSync />
-      {activeRepo ? <Workspace repo={activeRepo} /> : <ProjectWizard />}
-      <SettingsModal />
+      {showDashboard ? <Dashboard /> : activeRepo ? <Workspace repo={activeRepo} /> : <ProjectWizard />}
     </>
   );
 }

@@ -15,9 +15,20 @@ export const DEFAULT_MODELS: Record<ModelVendor, string> = {
   openai: "gpt-4o-mini",
   anthropic: "claude-3-5-sonnet-latest",
   gemini: "gemini-2.0-flash",
-  openrouter: "openrouter/free",
+  openrouter: "deepseek/deepseek-chat-v3.1:free",
   groq: "llama-3.3-70b-versatile",
   local: "Hermes-3-Llama-3.1-8B-q4f16_1-MLC",
+};
+
+export interface AgentConfig {
+  temperature: number;
+  maxSteps: number;
+}
+
+/** Padrões do Modo Agente: conectou a IA, já funciona sem configurar nada. */
+export const DEFAULT_AGENT_CONFIG: AgentConfig = {
+  temperature: 0.3,
+  maxSteps: 14,
 };
 
 export interface TreeNode {

@@ -1,9 +1,9 @@
-import { Settings, HardDrive, LogOut, ArrowLeft, RefreshCw } from "lucide-react";
+import { Gauge, HardDrive, LogOut, ArrowLeft, RefreshCw } from "lucide-react";
 import { useAppStore } from "../store/useAppStore";
 import { signOut } from "../lib/auth";
 
 export function TopBar() {
-  const { repositoryUrl, setActiveRepo, setShowStoragePanel, setShowSettings, gitUsername, gitToken, authSource, syncInfo, setShowSyncModal, setToast } = useAppStore();
+  const { repositoryUrl, setActiveRepo, setShowStoragePanel, setShowDashboard, gitUsername, gitToken, authSource, syncInfo, setShowSyncModal, setToast } = useAppStore();
 
   const syncBadge: Record<string, { label: string; cls: string }> = {
     "in-sync": { label: "sincronizado", cls: "bg-emerald-500/10 text-emerald-300 border-emerald-500/40" },
@@ -67,8 +67,8 @@ export function TopBar() {
           <HardDrive className="h-4 w-4" />
           <span className="hidden sm:inline">Armazenamento</span>
         </button>
-        <button onClick={() => setShowSettings(true)} className="flex min-h-11 items-center gap-1.5 rounded-xl px-3 py-2 text-sm text-slate-300 hover:bg-surface-700 touch-manipulation" title="Configurações e chaves de IA">
-          <Settings className="h-4 w-4" />
+        <button onClick={() => setShowDashboard(true)} className="flex min-h-11 items-center gap-1.5 rounded-xl px-3 py-2 text-sm text-slate-300 hover:bg-surface-700 touch-manipulation" title="Dashboard (IA, repositórios, agente, conta e diagnóstico)">
+          <Gauge className="h-4 w-4" />
         </button>
       </div>
     </header>

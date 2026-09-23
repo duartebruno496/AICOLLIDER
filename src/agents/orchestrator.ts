@@ -92,12 +92,16 @@ export class Orchestrator {
     if (!this.provider.available()) {
       throw new Error("Provedor de IA não disponível. Configure uma chave ou habilite WebGPU.");
     }
+    // Parâmetros padrão vindos do Dashboard (zero-config: conectou a IA, já roda).
+    const cfg = useAppStore.getState().agentConfig;
+    const temperature = Number.isFinite(cfg?.temperature) ? cfg.temperature : 0.3;
+    const maxSteps = Number.isFinite(cfg?.maxSteps) ? Math.min(40, Math.max(1, Math.round(cfg.maxSteps))) : 14;
     const messages = this.toLLM(chat);
     let appliedChanges = 0;
     let finalText = "";
 
-    for (let i = 0; i < 14; i++) {
-      const res = await this.provider.chat({ messages, tools: TOOLS, temperature: 0.3 });
+    for (let i = 0; i < maxSteps; i++) {
+      const res = await this.provider.chat({ messages, tools: TOOLS, temperature });
 
       if (res.content && res.toolCalls.length === 0) {
         finalText = res.content;

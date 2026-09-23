@@ -1,12 +1,11 @@
 import { useCallback, useEffect, useState } from "react";
-import { FolderGit2, Loader2, Download, Copy, Plus, Github, RefreshCw, Lock, Globe, FileCode2, LogOut, Search } from "lucide-react";
+import { FolderGit2, Loader2, Download, Copy, Plus, Github, RefreshCw, Lock, Globe, FileCode2, LogOut, Search, Gauge } from "lucide-react";
 import { useAppStore } from "../store/useAppStore";
 import { listTopLevelDirs } from "../lib/fs";
 import { cloneRepo, createLocalProject } from "../lib/git";
 import { refreshStorageInfo } from "../lib/workspace";
 import { Button, Field, inputCls } from "./common";
 import { StoragePanel } from "./StoragePanel";
-import { SettingsModal } from "./SettingsModal";
 import { loadRepoMeta, saveRepoMeta } from "../lib/repoMeta";
 
 interface GitHubRepo {
@@ -33,7 +32,7 @@ function timeAgo(iso: string): string {
 }
 
 export function ProjectWizard() {
-  const { gitToken, gitUsername, setGitToken, setActiveRepo, setRepositoryUrl, setTree, setSelectedPath, setContents, setToast, setStorage, setShowSyncModal } = useAppStore();
+  const { gitToken, gitUsername, setGitToken, setActiveRepo, setRepositoryUrl, setTree, setSelectedPath, setContents, setToast, setStorage, setShowSyncModal, setShowDashboard } = useAppStore();
   const [url, setUrl] = useState("");
   const [dirs, setDirs] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
@@ -236,13 +235,22 @@ export function ProjectWizard() {
 
   return (
     <div className="mx-auto w-full max-w-3xl space-y-6 p-4 md:p-6">
-      <div>
-        <h1 className="text-xl font-bold text-white">Bem-vindo ao AICOLLIDER</h1>
-        <p className="mt-1 text-sm text-slate-400">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h1 className="text-xl font-bold text-white">Bem-vindo ao AICOLLIDER</h1>
+          <p className="mt-1 text-sm text-slate-400">
           {gitUsername
             ? `Logado como ${gitUsername}. Abra um dos seus repositórios do GitHub, crie um novo ou um projeto local.`
             : "Entre com sua conta GitHub para acessar seus projetos."}
-        </p>
+          </p>
+        </div>
+        <button
+          onClick={() => setShowDashboard(true)}
+          className="flex shrink-0 min-h-11 items-center gap-1.5 rounded-xl border border-surface-600 bg-surface-800 px-3 py-2 text-sm text-slate-300 hover:bg-surface-700 touch-manipulation"
+          title="Dashboard de controle (IA, repositórios, agente, conta e diagnóstico)"
+        >
+          <Gauge className="h-4 w-4" /> Dashboard
+        </button>
       </div>
 
       {gitToken && (
@@ -446,8 +454,6 @@ export function ProjectWizard() {
         <h2 className="mb-3 text-sm font-semibold text-slate-200">Gerenciamento de armazenamento</h2>
         <StoragePanel onDirRemoved={() => void loadDirs()} />
       </div>
-
-      <SettingsModal />
     </div>
   );
 }

@@ -12,7 +12,6 @@ import { RollbackBar } from "./RollbackBar";
 import { SyncModal } from "./SyncModal";
 import { StoragePanel } from "./StoragePanel";
 import { Modal } from "./common";
-import { SettingsModal } from "./SettingsModal";
 
 export function Workspace({ repo }: { repo: string }) {
   const { pendingChange, editorMode, showStoragePanel, setShowStoragePanel, setSyncInfo } = useAppStore();
@@ -92,8 +91,6 @@ export function Workspace({ repo }: { repo: string }) {
       <Modal open={showStoragePanel} onClose={() => setShowStoragePanel(false)} title="Armazenamento local" wide>
         <StoragePanel />
       </Modal>
-
-      <SettingsModal />
     </div>
   );
 }

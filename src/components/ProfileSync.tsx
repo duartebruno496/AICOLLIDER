@@ -30,6 +30,12 @@ function mergeProfile(p: ProfileData): void {
   if (p.supabaseConfig?.url) s.setSupabaseConfig(p.supabaseConfig);
   if (p.localModel && localModelSupportsTools(p.localModel)) s.setLocalModel(p.localModel);
   if (typeof p.agentEnabled === "boolean") s.setAgentEnabled(p.agentEnabled);
+  if (p.agentConfig && Number.isFinite(p.agentConfig.temperature) && Number.isFinite(p.agentConfig.maxSteps)) {
+    s.setAgentConfig({
+      temperature: Math.min(2, Math.max(0, p.agentConfig.temperature)),
+      maxSteps: Math.min(40, Math.max(1, Math.round(p.agentConfig.maxSteps))),
+    });
+  }
   if (typeof p.syncApiKeys === "boolean") s.setSyncApiKeys(p.syncApiKeys);
   if (p.models) {
     (Object.keys(p.models) as RemoteVendor[]).forEach((v) => {
@@ -57,11 +63,17 @@ function persistedSnapshot(s: ReturnType<typeof useAppStore.getState>): string {
     models: s.models,
     localModel: s.localModel,
     agentEnabled: s.agentEnabled,
+    agentConfig: s.agentConfig,
     syncApiKeys: s.syncApiKeys,
     activeRepo: s.activeRepo,
     repositoryUrl: s.repositoryUrl,
     repoDirs: s.repoDirs,
   });
+}
+
+/** Coleta o snapshot atual do perfil (reutilizado pelo Dashboard para "Sincronizar agora"). */
+export function collectProfileData(): ProfileData {
+  return collect();
 }
 
 /** Sincroniza o perfil do usuário com um repo privado no GitHub (serverless). */
