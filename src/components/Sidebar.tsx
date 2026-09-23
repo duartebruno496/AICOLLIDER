@@ -1,14 +1,89 @@
-import { useState } from "react";
-import { ChevronRight, FileCode, FilePlus2, Folder, FolderOpen, FolderPlus, Pencil, Trash2 } from "lucide-react";
+import { useRef, useState, type ChangeEvent, type DragEvent } from "react";
+import { ChevronRight, FileCode, FilePlus2, Folder, FolderOpen, FolderPlus, Pencil, Trash2, Upload } from "lucide-react";
 import { useAppStore } from "../store/useAppStore";
 import { readFile } from "../lib/fs";
-import { createFileEntry, createDirEntry, deleteEntry, renameEntry, toRel } from "../lib/fileOps";
+import { createFileEntry, createDirEntry, deleteEntry, renameEntry, toRel, importFiles, existingPaths, normalizeImportRel, type ImportFile } from "../lib/fileOps";
 import type { TreeNode } from "../types";
 
 function validName(name: string): string | null {
   const n = name.trim();
   if (!n || n === "." || n === ".." || n.includes("/") || n.includes("\\")) return null;
   return n;
+}
+
+const MAX_IMPORT_BYTES = 10 * 1024 * 1024;
+const MAX_IMPORT_FILES = 200;
+
+function readFileText(file: File): Promise<{ text: string; tooBig: boolean }> {
+  return new Promise((resolve) => {
+    if (file.size > MAX_IMPORT_BYTES) {
+      resolve({ text: "", tooBig: true });
+      return;
+    }
+    const r = new FileReader();
+    r.onload = () => resolve({ text: String(r.result ?? ""), tooBig: false });
+    r.onerror = () => resolve({ text: "", tooBig: true });
+    r.readAsText(file, "utf-8");
+  });
+}
+
+function collectDropItems(dt: DataTransfer): Promise<Array<{ file: File; rel: string }>> {
+  return new Promise((resolve) => {
+    const items = Array.from(dt.items ?? []);
+    if (items.length === 0 || !items[0].webkitGetAsEntry) {
+      resolve(Array.from(dt.files).map((f) => ({ file: f, rel: f.name })));
+      return;
+    }
+    const out: Array<{ file: File; rel: string }> = [];
+    let pending = 0;
+    let done = false;
+    const maybeFinish = () => {
+      if (done && pending === 0) resolve(out);
+    };
+    const walk = (entry: FileSystemEntry, base: string) => {
+      if (entry.isFile) {
+        pending += 1;
+        (entry as FileSystemFileEntry).file(
+          (f) => {
+            out.push({ file: f, rel: base ? `${base}/${f.name}` : f.name });
+            pending -= 1;
+            maybeFinish();
+          },
+          () => {
+            pending -= 1;
+            maybeFinish();
+          }
+        );
+      } else if (entry.isDirectory) {
+        pending += 1;
+        const reader = (entry as FileSystemDirectoryEntry).createReader();
+        const readBatch = () => {
+          reader.readEntries(
+            (entries) => {
+              if (entries.length === 0) {
+                pending -= 1;
+                maybeFinish();
+                return;
+              }
+              for (const child of entries) walk(child, base ? `${base}/${entry.name}` : entry.name);
+              readBatch();
+            },
+            () => {
+              pending -= 1;
+              maybeFinish();
+            }
+          );
+        };
+        readBatch();
+      }
+    };
+    for (const it of items) {
+      const entry = it.webkitGetAsEntry();
+      if (entry) walk(entry, "");
+    }
+    done = true;
+    maybeFinish();
+  });
 }
 
 function Node({ node, depth, repo }: { node: TreeNode; depth: number; repo: string }) {
@@ -180,6 +255,9 @@ function Node({ node, depth, repo }: { node: TreeNode; depth: number; repo: stri
 
 export function Sidebar({ repo }: { repo: string }) {
   const { tree, setContents, setSelectedPath, setEditorMode, pendingChange, setToast } = useAppStore();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [importing, setImporting] = useState(false);
+  const [dragOver, setDragOver] = useState(false);
 
   async function newFileRoot() {
     if (pendingChange) {
@@ -226,18 +304,104 @@ export function Sidebar({ repo }: { repo: string }) {
     }
   }
 
+  async function runImport(items: Array<{ file: File; rel: string }>) {
+    if (pendingChange) {
+      setToast("Aceite ou rejeite a alteração pendente antes.");
+      return;
+    }
+    setImporting(true);
+    try {
+      const seen = new Set<string>();
+      const files: ImportFile[] = [];
+      const skipped: string[] = [];
+      for (const it of items.slice(0, MAX_IMPORT_FILES)) {
+        const rel = normalizeImportRel(it.rel);
+        if (!rel || seen.has(rel)) {
+          skipped.push(it.rel || "(inválido)");
+          continue;
+        }
+        seen.add(rel);
+        const { text, tooBig } = await readFileText(it.file);
+        if (tooBig) {
+          skipped.push(rel);
+          continue;
+        }
+        if (text.includes("\u0000")) {
+          skipped.push(rel);
+          continue;
+        }
+        files.push({ rel, content: text });
+      }
+      if (files.length === 0) {
+        setToast(skipped.length > 0 ? "Nenhum arquivo importado (limite: texto, até 10 MB)." : "Nenhum arquivo selecionado.");
+        return;
+      }
+      const existing = await existingPaths(repo, files.map((f) => f.rel));
+      if (existing.length > 0) {
+        const ok = window.confirm(
+          `${existing.length} arquivo(s) já existe(m) e serão SOBRESCRITOS:\n${existing
+            .slice(0, 8)
+            .join("\n")}${existing.length > 8 ? `\n... (+${existing.length - 8})` : ""}\n\nDeseja continuar?`
+        );
+        if (!ok) {
+          setToast("Importação cancelada — arquivos existentes preservados.");
+          return;
+        }
+      }
+      const imported = await importFiles(repo, files);
+      setToast(`Importados ${imported} arquivo(s)${skipped.length > 0 ? ` · pulados ${skipped.length}` : ""}.`);
+    } catch {
+      setToast("Falha ao importar arquivos.");
+    } finally {
+      setImporting(false);
+    }
+  }
+
+  async function onPick(e: ChangeEvent<HTMLInputElement>) {
+    const list = Array.from(e.target.files ?? []);
+    e.target.value = "";
+    await runImport(list.map((f) => ({ file: f, rel: f.name })));
+  }
+
+  async function onDrop(e: DragEvent<HTMLElement>) {
+    e.preventDefault();
+    setDragOver(false);
+    const items = await collectDropItems(e.dataTransfer);
+    if (items.length === 0) return;
+    await runImport(items);
+  }
+
   return (
-    <aside className="hidden w-72 shrink-0 flex-col overflow-y-auto border-r border-surface-600 bg-surface-900/70 md:flex">
+    <aside
+      className={`hidden w-72 shrink-0 flex-col overflow-y-auto border-r border-surface-600 bg-surface-900/70 md:flex ${
+        dragOver ? "ring-2 ring-inset ring-sky-500/70" : ""
+      }`}
+      onDragOver={(e) => {
+        e.preventDefault();
+        setDragOver(true);
+      }}
+      onDragLeave={() => setDragOver(false)}
+      onDrop={(e) => void onDrop(e)}
+    >
       <div className="sticky top-0 z-10 border-b border-surface-600 bg-surface-900 px-3 py-2">
         <div className="flex items-center justify-between">
           <span className="text-xs font-semibold uppercase tracking-wide text-slate-400">Explorador · {repo}</span>
           <span className="flex items-center gap-1">
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              disabled={importing}
+              title="Importar arquivos do computador"
+              className="rounded p-1.5 text-slate-400 hover:bg-surface-700 hover:text-slate-100 disabled:opacity-40 touch-manipulation"
+            >
+              <Upload className="h-4 w-4" />
+            </button>
             <button onClick={() => void newFileRoot()} title="Novo arquivo (raiz)" className="rounded p-1.5 text-slate-400 hover:bg-surface-700 hover:text-slate-100 touch-manipulation">
               <FilePlus2 className="h-4 w-4" />
             </button>
             <button onClick={() => void newFolderRoot()} title="Nova pasta (raiz)" className="rounded p-1.5 text-slate-400 hover:bg-surface-700 hover:text-slate-100 touch-manipulation">
               <FolderPlus className="h-4 w-4" />
             </button>
+            <input ref={fileInputRef} type="file" multiple className="hidden" onChange={(e) => void onPick(e)} />
           </span>
         </div>
       </div>

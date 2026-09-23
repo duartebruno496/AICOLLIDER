@@ -46,3 +46,48 @@ export async function deleteEntry(repo: string, abs: string): Promise<void> {
   await commitAll(repo, `AICOLLIDER: remove ${toRel(repo, abs)}`, repoAuthor());
   await refreshWorkspace(repo);
 }
+
+export interface ImportFile {
+  rel: string;
+  content: string;
+}
+
+/** Normaliza um caminho relativo vindo de upload/arrastar (defesa contra `..`, `/` absoluto e `\`). Retorna null se inválido. */
+export function normalizeImportRel(rel: string): string | null {
+  const parts = rel.replace(/\\/g, "/").split("/").filter(Boolean);
+  const clean: string[] = [];
+  for (const p of parts) {
+    if (p === "." || p === "..") return null;
+    clean.push(p);
+  }
+  return clean.length > 0 ? clean.join("/") : null;
+}
+
+/** Retorna os rels que já existem dentro do repo (para confirmar sobrescrita antes do import). */
+export async function existingPaths(repo: string, rels: string[]): Promise<string[]> {
+  const out: string[] = [];
+  for (const r of rels) {
+    try {
+      await VFS.promises.stat(`/${repo}/${r}`);
+      out.push(r);
+    } catch {
+      /* não existe */
+    }
+  }
+  return out;
+}
+
+/** Grava vários arquivos de uma vez + um único commit + refresh da árvore. Rel inválido/binário é ignorado. */
+export async function importFiles(repo: string, files: ImportFile[]): Promise<number> {
+  const safe: ImportFile[] = [];
+  for (const f of files) {
+    const rel = normalizeImportRel(f.rel);
+    if (!rel || f.content.includes("\u0000")) continue;
+    safe.push({ rel, content: f.content });
+  }
+  if (!safe.length) return 0;
+  for (const f of safe) await writeFile(`/${repo}/${f.rel}`, f.content);
+  await commitAll(repo, `AICOLLIDER: importa arquivos (${safe.length})`, repoAuthor());
+  await refreshWorkspace(repo);
+  return safe.length;
+}
