@@ -25,7 +25,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import { useAppStore } from "../store/useAppStore";
-import type { ApiKeys, ChatMode, RemoteVendor } from "../types";
+import type { ApiKeys, RemoteVendor } from "../types";
 import { DEFAULT_MODELS, DEFAULT_AGENT_CONFIG, SCRATCH_REPO } from "../types";
 import { Field, Button, inputCls } from "./common";
 import { signOut } from "../lib/auth";
@@ -645,7 +645,7 @@ function ReposTab() {
 }
 
 function AgentTab() {
-  const { chatMode, setChatMode, agentConfig, setAgentConfig, setToast } = useAppStore();
+  const { agentConfig, setAgentConfig, setToast } = useAppStore();
   const [temperature, setTemperature] = useState(agentConfig.temperature);
   const [maxSteps, setMaxSteps] = useState(agentConfig.maxSteps);
 
@@ -672,22 +672,11 @@ function AgentTab() {
         </h3>
 
         <div className="mb-4">
-          <span className="mb-2 block text-sm font-medium text-slate-200">Modo padrão do chat</span>
-          <div className="flex gap-1 rounded-xl border border-surface-600 bg-surface-900 p-1">
-            {(["chat", "agent"] as ChatMode[]).map((m) => (
-              <button
-                key={m}
-                onClick={() => setChatMode(m)}
-                className={`flex flex-1 min-h-9 items-center justify-center gap-1.5 rounded-lg px-2 py-1.5 text-xs font-semibold touch-manipulation ${
-                  chatMode === m ? "bg-emerald-600 text-white" : "text-slate-400 hover:bg-surface-700 hover:text-slate-200"
-                }`}
-              >
-                {m === "chat" ? "Conversar" : "Agente"}
-              </button>
-            ))}
-          </div>
-          <p className="mt-1 text-xs text-slate-500">
-            Conversa é o padrão (sem mexer em arquivos). No chat, o modo é escolhido por mensagem; este é o valor inicial.
+          <span className="mb-2 block text-sm font-medium text-slate-200">Modo único (conversa + agente)</span>
+          <p className="text-xs text-slate-400">
+            Não existe mais modo "Conversar" separado: você conversa com a IA no chat e, quando pede uma tarefa, ela
+            planeja e propõe mudanças (diffs) que você aprova. Ative a "Equipe pré-criada" no chat para o fluxo
+            PM → Engenheiro → Revisor.
           </p>
         </div>
 
