@@ -7,3 +7,4 @@ dev-dist/
 .DS_Store
 Thumbs.db
 *.logaicollider-portable.zip
+dev.log
