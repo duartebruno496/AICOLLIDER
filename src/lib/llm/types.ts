@@ -55,3 +55,15 @@ export function parseToolArgs(raw: string): Record<string, unknown> {
     return {};
   }
 }
+
+/** Une todas as mensagens system em UMA única, sempre na primeira posição (exigência de WebLLM/Groq/etc). */
+export function normalizeLLMMessages(messages: LLMMessage[]): LLMMessage[] {
+  const system = messages
+    .filter((m) => m.role === "system")
+    .map((m) => m.content ?? "")
+    .filter(Boolean)
+    .join("\n");
+  const rest = messages.filter((m) => m.role !== "system");
+  if (!system) return rest;
+  return [{ role: "system", content: system }, ...rest];
+}

@@ -82,6 +82,8 @@ export function ChatPanel({ repo }: { repo: string | null }) {
           <option value="openai">OpenAI</option>
           <option value="anthropic">Anthropic</option>
           <option value="gemini">Gemini</option>
+          <option value="openrouter">OpenRouter (modelos grátis :free)</option>
+          <option value="groq">Groq (grátis)</option>
           <option value="local">Local (WebGPU)</option>
         </select>
       </div>

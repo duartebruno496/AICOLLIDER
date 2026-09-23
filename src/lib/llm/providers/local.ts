@@ -1,4 +1,5 @@
 import type { LLMProvider, LLMRequest, LLMResponse, LLMToolCall } from "../types";
+import { normalizeLLMMessages } from "../types";
 
 declare global {
   interface Navigator {
@@ -58,7 +59,7 @@ export class LocalWebLLMProvider implements LLMProvider {
         parameters: t.function.parameters,
       },
     }));
-    const messages = req.messages.map((m) => {
+    const messages = normalizeLLMMessages(req.messages).map((m) => {
       if (m.role === "system") return { role: "system", content: m.content ?? "" };
       if (m.role === "assistant" && m.toolCalls?.length) {
         return {

@@ -79,8 +79,7 @@ export class Orchestrator {
 
   private toLLM(chat: ChatMessage[]): LLMMessage[] {
     const out: LLMMessage[] = [
-      { role: "system", content: SYSTEM_PROMPT },
-      { role: "system", content: `Repositório aberto: ${this.coder["repo"]}` },
+      { role: "system", content: `${SYSTEM_PROMPT}\n\nRepositório aberto: ${this.coder["repo"]}` },
     ];
     for (const m of chat) {
       if (m.role === "user") out.push({ role: "user", content: m.content });
