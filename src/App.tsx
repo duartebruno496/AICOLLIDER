@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useAppStore } from "./store/useAppStore";
 import { initAuth } from "./lib/auth";
 import { clientConfig } from "./lib/supabase";
@@ -31,6 +31,7 @@ export default function App() {
   const showDashboard = useAppStore((s) => s.showDashboard);
   const setShowDashboard = useAppStore((s) => s.setShowDashboard);
   const [started, setStarted] = useState(false);
+  const restoredMount = useRef(false);
 
   useEffect(() => {
     void getFS();
@@ -40,12 +41,26 @@ export default function App() {
       const raw = localStorage.getItem("aicollider:session");
       if (raw && !useAppStore.getState().gitToken) {
         const saved = JSON.parse(raw) as { token?: string; name?: string | null; avatar?: string | null; source?: string | null };
-        if (saved.token) useAppStore.getState().setGitToken(saved.token, saved.name ?? null, saved.avatar ?? null, saved.source as never);
+        if (saved.token) {
+          useAppStore.getState().setGitToken(saved.token, saved.name ?? null, saved.avatar ?? null, saved.source as never);
+          restoredMount.current = true;
+        }
       }
     } catch {
       /* ignore */
     }
   }, []);
+
+  // Login real (fora do restore do mount) abre o Dashboard direto, sem modal.
+  useEffect(() => {
+    if (!gitToken) {
+      restoredMount.current = false;
+      return;
+    }
+    if (restoredMount.current) return;
+    restoredMount.current = true;
+    setShowDashboard(true);
+  }, [gitToken, setShowDashboard]);
 
   useEffect(() => {
     const cfg = supabaseConfig.url && supabaseConfig.anonKey ? supabaseConfig : { url: clientConfig.url, anonKey: clientConfig.anonKey };

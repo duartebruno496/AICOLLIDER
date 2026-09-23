@@ -26,7 +26,7 @@ import {
 } from "lucide-react";
 import { useAppStore } from "../store/useAppStore";
 import type { ApiKeys, ChatMode, RemoteVendor } from "../types";
-import { DEFAULT_MODELS, DEFAULT_AGENT_CONFIG } from "../types";
+import { DEFAULT_MODELS, DEFAULT_AGENT_CONFIG, SCRATCH_REPO } from "../types";
 import { Field, Button, inputCls } from "./common";
 import { signOut } from "../lib/auth";
 import { listTopLevelDirs, deletePath } from "../lib/fs";
@@ -332,7 +332,7 @@ function ReposTab() {
   const loadDirs = useCallback(async () => {
     const info = await refreshStorageInfo(false);
     setStorage(info);
-    const names = await listTopLevelDirs();
+    const names = (await listTopLevelDirs()).filter((n) => !n.startsWith("_"));
     const sized = await Promise.all(names.map(async (n) => ({ name: n, size: await calcDirSize(n).catch(() => 0) })));
     setDirs(sized.sort((a, b) => b.size - a.size));
   }, [setStorage]);
@@ -458,15 +458,36 @@ function ReposTab() {
     }
   }
 
+  async function enterScratch() {
+    const dirs = await listTopLevelDirs();
+    if (!dirs.includes(SCRATCH_REPO)) await createLocalProject(SCRATCH_REPO);
+    setActiveRepo(SCRATCH_REPO);
+    setRepositoryUrl(null);
+    setTree([]);
+    setSelectedPath(null);
+    setContents("", "");
+    setShowSyncModal(false);
+    setShowDashboard(false);
+  }
+
   const progressPct = progress && progress.total > 0 ? Math.round((progress.loaded / progress.total) * 100) : 0;
   const clonedNames = new Set(dirs.map((d) => d.name));
 
   return (
     <>
       <section className="rounded-2xl border border-surface-600 bg-surface-800 p-5">
-        <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold text-slate-200">
-          <FolderGit2 className="h-4 w-4 text-emerald-400" /> Repositórios locais (IndexedDB)
-        </h3>
+        <div className="mb-3 flex items-center justify-between">
+          <h3 className="flex items-center gap-2 text-sm font-semibold text-slate-200">
+            <FolderGit2 className="h-4 w-4 text-emerald-400" /> Repositórios locais (IndexedDB)
+          </h3>
+          <button
+            onClick={() => void enterScratch()}
+            className="flex min-h-9 shrink-0 items-center gap-1.5 rounded-lg border border-emerald-500/40 bg-emerald-500/10 px-2.5 py-1.5 text-xs font-semibold text-emerald-200 hover:bg-emerald-500/20 touch-manipulation"
+            title="Abrir o editor sem projeto (rascunho que você salva quando quiser)"
+          >
+            <Plus className="h-3.5 w-3.5" /> Editor em branco
+          </button>
+        </div>
         {dirs.length === 0 ? (
           <p className="text-sm text-slate-500">Nenhum repositório clonado ainda. Clone ou crie abaixo.</p>
         ) : (

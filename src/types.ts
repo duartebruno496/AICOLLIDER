@@ -28,6 +28,9 @@ export interface AgentConfig {
 /** Modo de envio da mensagem no chat: conversa normal (sem tools) ou agente (manipula o FS virtual). */
 export type ChatMode = "chat" | "agent";
 
+/** Repositório interno de rascunho usado pelo "Editor sem projeto" (oculto das listas). */
+export const SCRATCH_REPO = "_scratch";
+
 /** Padrões do Modo Agente: conectou a IA, já funciona sem configurar nada. */
 export const DEFAULT_AGENT_CONFIG: AgentConfig = {
   temperature: 0.3,

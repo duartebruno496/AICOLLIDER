@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
-import { FolderGit2, Loader2, Download, Copy, Plus, Github, RefreshCw, Lock, Globe, FileCode2, LogOut, Search, Gauge } from "lucide-react";
+import { FolderGit2, Loader2, Download, Copy, Plus, Github, RefreshCw, Lock, Globe, FileCode2, LogOut, Search, Gauge, Code2 } from "lucide-react";
 import { useAppStore } from "../store/useAppStore";
+import { SCRATCH_REPO } from "../types";
 import { listTopLevelDirs } from "../lib/fs";
 import { cloneRepo, createLocalProject } from "../lib/git";
 import { refreshStorageInfo } from "../lib/workspace";
@@ -51,7 +52,7 @@ export function ProjectWizard() {
   const loadDirs = useCallback(async () => {
     const info = await refreshStorageInfo(false);
     setStorage(info);
-    setDirs(await listTopLevelDirs());
+    setDirs((await listTopLevelDirs()).filter((d) => !d.startsWith("_")));
   }, [setStorage]);
 
   useEffect(() => {
@@ -230,6 +231,17 @@ export function ProjectWizard() {
     setShowSyncModal(true);
   }
 
+  async function enterScratch() {
+    const dirs = await listTopLevelDirs();
+    if (!dirs.includes(SCRATCH_REPO)) await createLocalProject(SCRATCH_REPO);
+    setActiveRepo(SCRATCH_REPO);
+    setRepositoryUrl(null);
+    setTree([]);
+    setSelectedPath(null);
+    setContents("", "");
+    setShowSyncModal(false);
+  }
+
   const progressPct = progress && progress.total > 0 ? Math.round((progress.loaded / progress.total) * 100) : 0;
   const clonedDirs = new Set(dirs);
 
@@ -244,13 +256,22 @@ export function ProjectWizard() {
             : "Entre com sua conta GitHub para acessar seus projetos."}
           </p>
         </div>
-        <button
-          onClick={() => setShowDashboard(true)}
-          className="flex shrink-0 min-h-11 items-center gap-1.5 rounded-xl border border-surface-600 bg-surface-800 px-3 py-2 text-sm text-slate-300 hover:bg-surface-700 touch-manipulation"
-          title="Dashboard de controle (IA, repositórios, agente, conta e diagnóstico)"
-        >
-          <Gauge className="h-4 w-4" /> Dashboard
-        </button>
+        <div className="flex shrink-0 flex-col gap-2">
+          <button
+            onClick={() => void enterScratch()}
+            className="flex shrink-0 min-h-11 items-center gap-1.5 rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-200 hover:bg-emerald-500/20 touch-manipulation"
+            title="Abrir o editor sem projeto — rascunho que você salva quando quiser"
+          >
+            <Code2 className="h-4 w-4" /> Editor
+          </button>
+          <button
+            onClick={() => setShowDashboard(true)}
+            className="flex shrink-0 min-h-11 items-center gap-1.5 rounded-xl border border-surface-600 bg-surface-800 px-3 py-2 text-sm text-slate-300 hover:bg-surface-700 touch-manipulation"
+            title="Dashboard de controle (IA, repositórios, agente, conta e diagnóstico)"
+          >
+            <Gauge className="h-4 w-4" /> Dashboard
+          </button>
+        </div>
       </div>
 
       {gitToken && (

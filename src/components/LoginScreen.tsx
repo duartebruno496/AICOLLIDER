@@ -123,7 +123,7 @@ export function LoginScreen({ onOpenSettings }: { onOpenSettings?: () => void })
             <div className="flex h-14 w-14 items-center justify-center rounded-full bg-emerald-500/20">
               <Check className="h-7 w-7 text-emerald-400" />
             </div>
-            <p className="text-sm text-slate-300">Autenticado! Entrando no editor…</p>
+            <p className="text-sm text-slate-300">Autenticado! Abrindo o Dashboard…</p>
           </div>
         )}
 
