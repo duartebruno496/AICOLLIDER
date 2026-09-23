@@ -187,7 +187,7 @@ export function SettingsModal() {
                     </option>
                   ))}
                 </select>
-                <span className="mt-1 block text-xs text-slate-500">Hermes usam tools nativos; os leves (Qwen/Llama) usam tool calling manual — menos confiáveis no Modo Agente.</span>
+                <span className="mt-1 block text-xs text-slate-500">Hermes 3 usa tools nativos; Hermes 2 e os leves (Qwen/Llama) usam tool calling manual — menos confiáveis no Modo Agente.</span>
               </Field>
             )}
             <Field label="Endpoint usado">

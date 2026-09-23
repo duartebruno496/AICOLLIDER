@@ -7,12 +7,15 @@ declare global {
   }
 }
 
-/** Modelos WebLLM (MLC) com function calling nativo via campo `tools` — fonte: erro oficial do WebLLM. */
+/** Modelos WebLLM (MLC) com function calling nativo via campo `tools`:
+ * - Hermes-3-Llama-3.1: aceita system prompt customizado + tools (template Hermes-3 funde os dois).
+ * - Hermes-2-Pro: NÃO — o runtime MLC lança "cannot specify customized system prompt" com o campo tools;
+ *   por isso Hermes-2-Pro usa o modo manual (formato <tool_call> no qual foi treinado). */
 export function localModelSupportsTools(model: string): boolean {
-  return /hermes/i.test(model);
+  return /Hermes-3-Llama/i.test(model);
 }
 
-/** Converte os schemas de tools em instruções no formato Hermes (<tool_call>). */
+/** Converte os schemas de tools em instruções no formato Hermes (<functions> + <tool_call>). */
 export function buildToolInstructions(tools: LLMToolDef[]): string {
   const list = tools
     .map((t) =>
@@ -24,15 +27,17 @@ export function buildToolInstructions(tools: LLMToolDef[]): string {
     )
     .join(",\n");
   return [
-    "Você tem acesso às seguintes funções:",
+    "Você é uma IA de function calling. Você recebe as assinaturas das funções dentro de tags XML <functions></functions>.",
+    "Você pode chamar uma ou mais funções para ajudar o usuário. Não invente valores para os argumentos.",
     "",
     "<functions>",
     list,
     "</functions>",
     "",
-    "Se precisar usar uma função, responda EXATAMENTE com o bloco a seguir (nada antes nem depois), em JSON válido:",
+    "Para chamar uma função, responda EXATAMENTE com um único objeto JSON dentro de tags <tool_call> (nada antes nem depois):",
     '<tool_call>{"name": "nome_da_funcao", "arguments": { ... }}</tool_call>',
-    "Se não precisar de função, responda normalmente em português.",
+    "Depois de chamar a função, você receberá o resultado e continuará a conversa.",
+    "Se não precisar chamar função alguma, responda a mensagem normalmente.",
   ].join("\n");
 }
 
